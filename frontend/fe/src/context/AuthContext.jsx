@@ -55,6 +55,11 @@ export function AuthProvider({ children }) {
 
   const signup = async (loginId, email, password, role) => {
     await new Promise(r => setTimeout(r, 400));
+    const normalizedRole = role?.toLowerCase();
+
+    if (!["engineer", "approver"].includes(normalizedRole)) {
+      return { success: false, error: "Only Engineer and Approver accounts can be created" };
+    }
 
     if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
       return { success: false, error: "Email already exists" };
@@ -65,7 +70,7 @@ export function AuthProvider({ children }) {
       loginId,
       email: email.toLowerCase(),
       password,
-      role: role.toLowerCase()
+      role: normalizedRole
     };
 
     setUsers(prev => [...prev, newUser]);
@@ -81,11 +86,13 @@ export function AuthProvider({ children }) {
   const role = user?.role?.toUpperCase();
   const canCreate = role === "ENGINEER" || role === "ADMIN";
   const canApprove = role === "APPROVER" || role === "ADMIN";
-  const canStart = role === "ENGINEER" || role === "ADMIN";
+  const canStart = !!role;
   const isAdmin = role === "ADMIN";
+  const canViewStagesSettings = role === "ADMIN" || role === "APPROVER";
+  const canViewApprovalsSettings = role === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ user, users, login, signup, logout, canCreate, canApprove, canStart, isAdmin, loading }}>
+    <AuthContext.Provider value={{ user, users, login, signup, logout, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, loading }}>
       {children}
     </AuthContext.Provider>
   );

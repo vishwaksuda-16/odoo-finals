@@ -83,7 +83,7 @@ export default function CreateUser() {
     }
 
     // Role
-    if (!["engineer", "approver", "admin"].includes(form.role)) {
+    if (!["engineer", "approver"].includes(form.role)) {
       errs.role = "Select a valid role";
     }
 
@@ -114,7 +114,6 @@ export default function CreateUser() {
   const roleOptions = [
     { value: "engineer", label: "Engineer", icon: null, desc: "Create & edit ECOs, start workflows" },
     { value: "approver", label: "Approver", icon: null, desc: "Review & approve ECOs" },
-    { value: "admin", label: "Admin", icon: null, desc: "Full access including user creation" },
   ];
 
   return (
@@ -206,7 +205,7 @@ export default function CreateUser() {
             {/* Role Selector */}
             <div>
               <label className="block text-sm font-semibold text-surface-700 mb-3">Role *</label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {roleOptions.map((opt) => (
                   <button
                     key={opt.value}

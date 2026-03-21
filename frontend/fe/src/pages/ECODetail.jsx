@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
+import { usePermissions } from "../hooks/usePermissions";
 
 const stageColors = {
   Draft: "bg-surface-200 text-surface-700",
@@ -24,10 +25,9 @@ export default function ECODetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, canStart, canApprove, canCreate } = useAuth();
+  const { user, canStart, canApprove } = useAuth();
+  const { role } = usePermissions();
   const { ecos, startEco, moveEcoToApproval, approveEco, approvals } = useData();
-
-  const role = localStorage.getItem("role");
   const eco = ecos.find((e) => e.id === id);
 
   // Auto-start if redirected from create with ?start=true
@@ -174,8 +174,8 @@ export default function ECODetail() {
             <h3 className="font-bold text-surface-900 mb-4">Actions</h3>
             <div className="space-y-3">
 
-              {/* ▶ Start ECO — ENGINEER & ADMIN only */}
-              {eco.stage === "Draft" && canStart && (
+              {/* ▶ Start ECO - visible to all roles only at Draft */}
+              {eco.stage === "Draft" && (
                 <button
                   onClick={handleStart}
                   id="eco-start-action"
@@ -184,12 +184,6 @@ export default function ECODetail() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                   Start ECO
                 </button>
-              )}
-              {eco.stage === "Draft" && !canStart && (
-                <div className="w-full py-2.5 bg-surface-100 text-surface-400 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 cursor-not-allowed">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  Start (Engineer/Admin only)
-                </div>
               )}
 
               {/* ➤ Send for Approval — ENGINEER & ADMIN only */}
@@ -209,7 +203,7 @@ export default function ECODetail() {
                 </div>
               )}
 
-              {/* ✓ Approve — APPROVER & ADMIN only */}
+              {/* ✓ Approve/Validate - APPROVER & ADMIN only */}
               {eco.stage === "Approval" && (
                 <>
                   {canApprove ? (
@@ -219,18 +213,13 @@ export default function ECODetail() {
                       className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                      Approve
+                      Validate / Approve
                     </button>
                   ) : (
-                    <div className="w-full py-2.5 bg-surface-100 text-surface-400 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 cursor-not-allowed">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      Approve (Approver/Admin only)
+                    <div className="w-full py-2.5 bg-amber-50 text-amber-700 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 border border-amber-200">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                      Pending Approval
                     </div>
-                  )}
-                  {!canApprove && (
-                    <p className="text-xs text-surface-500 text-center">
-                      Your role ({role}) cannot approve ECOs. Sign in as Approver or Admin.
-                    </p>
                   )}
                 </>
               )}
