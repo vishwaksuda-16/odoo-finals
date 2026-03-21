@@ -5,7 +5,24 @@ const prisma = new PrismaClient();
 const getECOs = async (req, res) => {
   try {
     const ecos = await prisma.eCO.findMany({
-      include: { product: true, createdBy: true },
+      include: {
+        product: {
+          include: {
+            versions: {
+              where: { status: 'ACTIVE' },
+              take: 1,
+              orderBy: { versionNumber: 'desc' }
+            },
+            boms: {
+              where: { status: 'ACTIVE' },
+              take: 1,
+              orderBy: { versionNumber: 'desc' },
+              include: { components: true }
+            }
+          }
+        },
+        createdBy: true
+      },
       orderBy: { createdAt: 'desc' }
     });
     res.json(ecos);
@@ -14,7 +31,7 @@ const getECOs = async (req, res) => {
   }
 };
 
-// 1. CREATE ECO + Notify Approvers
+// 1. CREATE ECO in DRAFT
 const createECO = async (req, res) => {
   const { title, type, productId, proposedChanges } = req.body;
   try {
@@ -28,18 +45,6 @@ const createECO = async (req, res) => {
         createdById: req.user.userId 
       }
     });
-
-    // --- NOTIFICATION LOGIC ---
-    const approvers = await prisma.user.findMany({ where: { role: 'APPROVER' } });
-    approvers.forEach(appr => {
-      sendNotification(
-        appr.email,
-        ` Action Required: New ECO ${title}`,
-        `Engineer ${req.user.email} has submitted a new change request for Product ${productId}.`,
-        `<h3>New ECO for Review</h3><p><b>Title:</b> ${title}</p><p>Please log in to the PLM Dashboard to approve or reject.</p>`
-      );
-    });
-    // ---------------------------
 
     res.status(201).json(newEco);
   } catch (error) {
@@ -136,7 +141,7 @@ const rejectECO = async (req, res) => {
 
     const updated = await prisma.eCO.update({
       where: { id },
-      data: { status: 'DRAFT' }
+      data: { status: 'REJECTED' }
     });
 
     await prisma.auditLog.create({
@@ -144,10 +149,20 @@ const rejectECO = async (req, res) => {
         action: "ECO_REJECTED",
         targetId: updated.id,
         oldValue: JSON.stringify({ status: 'PENDING' }),
-        newValue: JSON.stringify({ status: 'DRAFT' }),
+        newValue: JSON.stringify({ status: 'REJECTED' }),
         userId
       }
     });
+
+    const creator = await prisma.user.findUnique({ where: { id: eco.createdById } });
+    if (creator?.email) {
+      sendNotification(
+        creator.email,
+        `ECO Rejected: ${eco.title}`,
+        `Your change request "${eco.title}" was rejected and sent back for rework.`,
+        `<h3>ECO Rejected</h3><p>Your request <b>${eco.title}</b> has been rejected. Please revise and resubmit.</p>`
+      );
+    }
 
     res.json(updated);
   } catch (error) {
@@ -167,7 +182,7 @@ const updateECOStatus = async (req, res) => {
     if (!current) return res.status(404).json({ message: "ECO not found" });
 
     const invalidTransition =
-      (status === 'NEW' && current.status !== 'DRAFT') ||
+      (status === 'NEW' && !['DRAFT', 'REJECTED'].includes(current.status)) ||
       (status === 'PENDING' && current.status !== 'NEW');
     if (invalidTransition) {
       return res.status(400).json({ message: "Invalid status transition" });
@@ -177,10 +192,89 @@ const updateECOStatus = async (req, res) => {
       where: { id },
       data: { status }
     });
+
+    if (status === 'PENDING') {
+      const approvers = await prisma.user.findMany({ where: { role: 'APPROVER' } });
+      approvers.forEach(appr => {
+        sendNotification(
+          appr.email,
+          `Action Required: ECO ${current.title}`,
+          `A change request was submitted for product ${current.productId}.`,
+          `<h3>New ECO for Review</h3><p><b>Title:</b> ${current.title}</p><p>Please review and approve/reject.</p>`
+        );
+      });
+    }
+
     res.json(eco);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-module.exports = { createECO, approveECO, rejectECO, getECOs, updateECOStatus };
+const updateDraftECO = async (req, res) => {
+  const { id } = req.params;
+  const { title, productId, type, proposedChanges } = req.body;
+  try {
+    const eco = await prisma.eCO.findUnique({ where: { id } });
+    if (!eco) return res.status(404).json({ message: "ECO not found" });
+    if (!['DRAFT', 'REJECTED'].includes(eco.status)) {
+      return res.status(400).json({ message: "Only draft/rejected ECO can be edited" });
+    }
+    if (eco.createdById !== req.user.userId && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: "Only creator/admin can edit this draft" });
+    }
+
+    const updated = await prisma.eCO.update({
+      where: { id },
+      data: {
+        title: title ?? eco.title,
+        productId: productId ?? eco.productId,
+        type: type ?? eco.type,
+        proposedChanges: proposedChanges ?? eco.proposedChanges
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteDraftECO = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const eco = await prisma.eCO.findUnique({ where: { id } });
+    if (!eco) return res.status(404).json({ message: "ECO not found" });
+    if (!['DRAFT', 'REJECTED'].includes(eco.status)) {
+      return res.status(400).json({ message: "Only draft/rejected ECO can be deleted" });
+    }
+    if (eco.createdById !== req.user.userId && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: "Only creator/admin can delete this draft" });
+    }
+
+    await prisma.eCO.delete({ where: { id } });
+    res.json({ message: "Draft ECO deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const adminDeleteECO = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.eCO.delete({ where: { id } });
+    res.json({ message: "ECO deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const adminDeleteAllECOs = async (req, res) => {
+  try {
+    await prisma.eCO.deleteMany({});
+    res.json({ message: "All ECO records deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { createECO, approveECO, rejectECO, getECOs, updateECOStatus, updateDraftECO, deleteDraftECO, adminDeleteECO, adminDeleteAllECOs };

@@ -7,6 +7,7 @@ import { usePermissions } from "../hooks/usePermissions";
 
 const stageColors = {
   Draft: "bg-surface-200 text-surface-700",
+  Rejected: "bg-red-100 text-red-700 border border-red-200",
   New: "bg-blue-100 text-blue-700 border border-blue-200",
   "In Progress": "bg-blue-100 text-blue-700 border border-blue-200",
   Approval: "bg-amber-100 text-amber-700 border border-amber-200",
@@ -27,7 +28,7 @@ export default function ECODetail() {
   const navigate = useNavigate();
   const { user, canStart, canApprove } = useAuth();
   const { role } = usePermissions();
-  const { ecos, startEco, moveEcoToApproval, approveEco, rejectEco, approvals } = useData();
+  const { ecos, startEco, moveEcoToApproval, approveEco, rejectEco, deleteEco, approvals } = useData();
   const eco = ecos.find((e) => e.id === id);
 
   // Auto-start if redirected from create with ?start=true
@@ -60,6 +61,12 @@ export default function ECODetail() {
   const handleMoveToApproval = () => { if (canStart) moveEcoToApproval(id); };
   const handleApprove = () => { if (canApprove) approveEco(id); };
   const handleReject = () => { if (canApprove) rejectEco(id); };
+  const handleDeleteDraft = async () => {
+    if (eco.stage !== "Draft") return;
+    if (!window.confirm("Delete this draft ECO request?")) return;
+    await deleteEco(id);
+    navigate("/");
+  };
 
   const stageSteps = ["New", "Approval", "Done"];
   const currentStepIndex = stageSteps.indexOf(eco.stage === "Draft" || eco.stage === "In Progress" ? "New" : eco.stage);
@@ -91,6 +98,11 @@ export default function ECODetail() {
               <span className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                 ECO Applied
+              </span>
+            )}
+            {eco.status === "Rejected" && (
+              <span className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200">
+                Rejected by Approver
               </span>
             )}
           </div>
@@ -184,6 +196,24 @@ export default function ECODetail() {
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                   Start ECO
+                </button>
+              )}
+              {eco.stage === "Draft" && canStart && (
+                <button
+                  onClick={() => navigate(`/ecos/${eco.id}/edit`)}
+                  id="eco-edit-draft-action"
+                  className="w-full py-2.5 bg-surface-100 text-surface-800 font-semibold rounded-xl border border-surface-300 hover:bg-surface-200 transition-all text-sm"
+                >
+                  Edit Draft Request
+                </button>
+              )}
+              {eco.stage === "Draft" && canStart && (
+                <button
+                  onClick={handleDeleteDraft}
+                  id="eco-delete-draft-action"
+                  className="w-full py-2.5 bg-red-50 text-red-700 font-semibold rounded-xl border border-red-200 hover:bg-red-100 transition-all text-sm"
+                >
+                  Delete Draft Request
                 </button>
               )}
 

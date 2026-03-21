@@ -64,6 +64,21 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const refreshUsers = async () => {
+    const dbUsers = await api.auth.users();
+    setUsers(dbUsers);
+  };
+
+  const removeUser = async (id) => {
+    await api.auth.deleteUser(id);
+    await refreshUsers();
+  };
+
+  const clearUsers = async () => {
+    await api.auth.clearUsers();
+    await refreshUsers();
+  };
+
   const logout = () => {
     setUser(null);
     setUsers([]);
@@ -82,7 +97,7 @@ export function AuthProvider({ children }) {
   const canViewAuditLogs = role === "APPROVER" || role === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ user, users, login, signup, logout, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, canViewAuditLogs, loading }}>
+    <AuthContext.Provider value={{ user, users, login, signup, logout, refreshUsers, removeUser, clearUsers, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, canViewAuditLogs, loading }}>
       {children}
     </AuthContext.Provider>
   );

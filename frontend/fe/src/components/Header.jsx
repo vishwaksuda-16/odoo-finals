@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
 
 const menuIcon = (
@@ -9,7 +8,6 @@ const menuIcon = (
 
 export default function Header({ title = "Dashboard", onToggleSidebar }) {
   const { user, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -53,18 +51,6 @@ export default function Header({ title = "Dashboard", onToggleSidebar }) {
 
         {/* User Profile */}
         <div className="relative flex items-center gap-2" ref={dropdownRef}>
-          <button
-            onClick={toggleTheme}
-            id="theme-toggle-button"
-            className="p-2.5 rounded-xl border border-surface-200 bg-white hover:bg-surface-100 text-surface-600 transition-colors"
-            title={isDark ? "Switch to light theme" : "Switch to dark theme"}
-          >
-            {isDark ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
-            )}
-          </button>
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="flex items-center gap-3 px-3 py-2 rounded-xl border border-surface-200 bg-white hover:bg-surface-100 transition-colors"

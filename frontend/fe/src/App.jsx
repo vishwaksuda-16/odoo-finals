@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import ECOCreate from "./pages/ECOCreate";
+import ECOEdit from "./pages/ECOEdit";
 import ECODetail from "./pages/ECODetail";
 import ECOList from "./pages/ECOList";
 import ChangeView from "./pages/ChangeView";
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/ecos" element={<ProtectedRoute><ECOList /></ProtectedRoute>} />
       <Route path="/ecos/create" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ECOCreate /></RoleRoute>} />
+      <Route path="/ecos/:id/edit" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ECOEdit /></RoleRoute>} />
       <Route path="/ecos/:id" element={<ProtectedRoute><ECODetail /></ProtectedRoute>} />
       <Route path="/changes/:id" element={<ProtectedRoute><ChangeView /></ProtectedRoute>} />
 

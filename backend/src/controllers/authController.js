@@ -27,7 +27,7 @@ const register = async (req, res) => {
   }
 };
 
-// LOGIN: (Already implemented, ensure it matches this style)
+// LOGIN: 
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -51,8 +51,6 @@ const login = async (req, res) => {
 
 // LOGOUT: Stateless logout
 const logout = async (req, res) => {
-  // In a stateless JWT app, the server doesn't need to do much.
-  // We just send a success message. Member B will delete the token from LocalStorage.
   res.json({ message: "Logged out successfully." });
 };
 
@@ -93,4 +91,34 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, listUsers, resetPassword };
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (id === req.user.userId) {
+      return res.status(400).json({ message: "Cannot delete your own account" });
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.auditLog.deleteMany({ where: { userId: id } });
+      await tx.eCO.deleteMany({ where: { createdById: id } });
+      await tx.user.delete({ where: { id } });
+    });
+    res.json({ message: "User deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteAllUsers = async (req, res) => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.auditLog.deleteMany({ where: { userId: { not: req.user.userId } } });
+      await tx.eCO.deleteMany({ where: { createdById: { not: req.user.userId } } });
+      await tx.user.deleteMany({ where: { id: { not: req.user.userId } } });
+    });
+    res.json({ message: "All other users deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { register, login, logout, listUsers, resetPassword, deleteUser, deleteAllUsers };
