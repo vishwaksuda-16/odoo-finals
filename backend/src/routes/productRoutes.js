@@ -5,7 +5,7 @@ const { verifyToken } = require('../middleware/auth');
 const { validate, productSchema } = require('../middleware/validate');
 
 
-router.get('/', verifyToken, productController.getAllActiveProducts);
+router.get('/', productController.getAllActiveProducts);
 router.get('/:id/history', verifyToken, productController.getProductHistory);
 router.post('/', verifyToken, validate(productSchema), productController.createProduct);
 module.exports = router;

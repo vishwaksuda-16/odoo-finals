@@ -6,7 +6,7 @@ const verifyToken = (req, res, next) => {
   if (!token) return res.status(403).json({ message: "No token provided" });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hackathon_secret');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET );
     req.user = decoded; // Adds userId and role to the request object
     next();
   } catch (err) {
