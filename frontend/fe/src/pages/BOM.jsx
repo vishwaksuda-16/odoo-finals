@@ -4,9 +4,11 @@ import Layout from "../components/Layout";
 import DataTable from "../components/DataTable";
 import KanbanCard from "../components/KanbanCard";
 import { useData } from "../context/DataContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function BOM() {
   const { boms } = useData();
+  const { canCreate } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [view, setView] = useState("list");
@@ -51,14 +53,16 @@ export default function BOM() {
   return (
     <Layout title="Bills of Materials">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <button
-          onClick={() => navigate("/bom/create")}
-          id="new-bom-button"
-          className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold rounded-xl shadow-md shadow-primary-600/20 hover:shadow-lg transition-all flex items-center gap-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => navigate("/bom/create")}
+            id="new-bom-button"
+            className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold rounded-xl shadow-md shadow-primary-600/20 hover:shadow-lg transition-all flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New
+          </button>
+        )}
 
         <div className="relative flex-1 max-w-md">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

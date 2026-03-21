@@ -130,4 +130,29 @@ const approveBoMECO = async (ecoId, userId) => {
   });
 };
 
-module.exports = { approveBoMECO, getProductBoM, createBoM, getAllBOMs, getBOMById };
+const deleteBoM = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.boMComponent.deleteMany({ where: { bomId: id } });
+      await tx.billOfMaterial.delete({ where: { id } });
+    });
+    res.json({ message: "BoM deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteAllBoMs = async (req, res) => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.boMComponent.deleteMany({});
+      await tx.billOfMaterial.deleteMany({});
+    });
+    res.json({ message: "All BoM records deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { approveBoMECO, getProductBoM, createBoM, getAllBOMs, getBOMById, deleteBoM, deleteAllBoMs };

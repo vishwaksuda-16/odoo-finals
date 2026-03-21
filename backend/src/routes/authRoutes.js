@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, logout,listUsers,resetPassword } = require('../controllers/authController');
-const { verifyToken,isAdmin } = require('../middleware/auth')
-
+const { register, login, logout } = require('../controllers/authController');
 
 // POST /api/auth/register
 router.post('/register', register);
@@ -15,5 +13,7 @@ router.post('/logout', logout);
 router.get('/users', verifyToken, listUsers);
 router.patch('/reset-password', verifyToken, resetPassword);
 router.post('/register', verifyToken, isAdmin, register);
+router.delete('/users/:id', verifyToken, isAdmin, deleteUser);
+router.delete('/users', verifyToken, isAdmin, deleteAllUsers);
 
 module.exports = router;

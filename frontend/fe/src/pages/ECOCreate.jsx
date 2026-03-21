@@ -19,7 +19,11 @@ export default function ECOCreate() {
     bomId: "",
     effectiveDate: "",
     versionUpdate: false,
+    newSalePrice: "",
+    newCostPrice: "",
   });
+  const [componentDraft, setComponentDraft] = useState({ componentName: "", quantity: "" });
+  const [componentChanges, setComponentChanges] = useState([]);
   const [errors, setErrors] = useState({});
   const [saved, setSaved] = useState(false);
 
@@ -40,12 +44,49 @@ export default function ECOCreate() {
     if (!form.title.trim()) errs.title = "Title is required";
     if (!form.productId) errs.productId = "Product is required";
     if (form.ecoType === "BoM" && !form.bomId) errs.bomId = "Bill of Materials is required";
+    if (form.ecoType === "Product" && !form.newSalePrice && !form.newCostPrice) {
+      errs.proposedChanges = "Set at least one product attribute change";
+    }
+    if (form.ecoType === "BoM" && componentChanges.length === 0) {
+      errs.proposedChanges = "Add at least one component change";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const selectedProduct = products.find((p) => p.id === form.productId);
   const selectedBom = boms.find((b) => b.id === form.bomId);
+
+  const addComponentChange = () => {
+    const componentName = componentDraft.componentName.trim();
+    const quantity = parseInt(componentDraft.quantity, 10);
+    if (!componentName || !quantity || quantity <= 0) return;
+    setComponentChanges((prev) => [...prev, { componentName, quantity }]);
+    setComponentDraft({ componentName: "", quantity: "" });
+    setErrors((prev) => ({ ...prev, proposedChanges: "" }));
+  };
+
+  const removeComponentChange = (index) => {
+    setComponentChanges((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const buildProposedChanges = () => {
+    if (form.ecoType === "BoM") {
+      return {
+        components: componentChanges.map((c) => ({ componentName: c.componentName, quantity: c.quantity })),
+      };
+    }
+    const payload = {};
+    if (form.newSalePrice !== "") {
+      payload.salePrice = parseFloat(form.newSalePrice);
+      payload.oldSalePrice = selectedProduct?.salesPrice ?? null;
+    }
+    if (form.newCostPrice !== "") {
+      payload.costPrice = parseFloat(form.newCostPrice);
+      payload.oldCostPrice = selectedProduct?.costPrice ?? null;
+    }
+    return payload;
+  };
 
   const handleSave = async () => {
     if (!canCreate) return;
@@ -61,6 +102,7 @@ export default function ECOCreate() {
       userName: user?.loginId || "",
       effectiveDate: form.effectiveDate,
       versionUpdate: form.versionUpdate,
+      proposedChanges: buildProposedChanges(),
     });
     setSaved(true);
     navigate(`/ecos/${eco.id}`);
@@ -80,6 +122,7 @@ export default function ECOCreate() {
       userName: user?.loginId || "",
       effectiveDate: form.effectiveDate,
       versionUpdate: form.versionUpdate,
+      proposedChanges: buildProposedChanges(),
     });
     setTimeout(() => {
       navigate(`/ecos/${eco.id}?start=true`);
@@ -183,6 +226,86 @@ export default function ECOCreate() {
               </div>
             )}
 
+            {form.ecoType === "Product" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-surface-700 mb-2">New Sale Price</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.newSalePrice}
+                    onChange={(e) => update("newSalePrice", e.target.value)}
+                    disabled={isReadOnlyRole}
+                    className={inputClass("newSalePrice")}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-surface-700 mb-2">New Cost Price</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.newCostPrice}
+                    onChange={(e) => update("newCostPrice", e.target.value)}
+                    disabled={isReadOnlyRole}
+                    className={inputClass("newCostPrice")}
+                  />
+                </div>
+              </div>
+            )}
+
+            {form.ecoType === "BoM" && (
+              <div>
+                <label className="block text-sm font-semibold text-surface-700 mb-2">Component Changes</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={componentDraft.componentName}
+                    onChange={(e) => setComponentDraft((prev) => ({ ...prev, componentName: e.target.value }))}
+                    placeholder="Component"
+                    disabled={isReadOnlyRole}
+                    className="sm:col-span-2 w-full px-4 py-3 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={componentDraft.quantity}
+                      onChange={(e) => setComponentDraft((prev) => ({ ...prev, quantity: e.target.value }))}
+                      placeholder="Qty"
+                      disabled={isReadOnlyRole}
+                      className="w-full px-4 py-3 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={addComponentChange}
+                      disabled={isReadOnlyRole}
+                      className="px-4 py-3 text-sm font-semibold bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+                {componentChanges.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {componentChanges.map((c, idx) => (
+                      <div key={`${c.componentName}-${idx}`} className="flex items-center justify-between bg-surface-50 border border-surface-200 px-3 py-2 rounded-lg">
+                        <p className="text-sm text-surface-700">{c.componentName} - Qty {c.quantity}</p>
+                        {!isReadOnlyRole && (
+                          <button type="button" onClick={() => removeComponentChange(idx)} className="text-xs text-danger-600 hover:text-danger-700">
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {errors.proposedChanges && <p className="text-xs text-danger-500">{errors.proposedChanges}</p>}
+
             {/* User (auto-filled) */}
             <div>
               <label className="block text-sm font-semibold text-surface-700 mb-2">User *</label>
@@ -244,7 +367,7 @@ export default function ECOCreate() {
                 </button>
               )}
               {/* Start — visible for Engineer & Admin only */}
-              {canStart && (
+              {canCreate && (
                 <button
                   onClick={handleStart}
                   id="eco-start-button"

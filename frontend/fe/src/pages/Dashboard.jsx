@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import DataTable from "../components/DataTable";
 import KanbanCard from "../components/KanbanCard";
 import { useData } from "../context/DataContext";
+import { useAuth } from "../context/AuthContext";
 
 const listIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
 const kanbanIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
@@ -11,6 +12,7 @@ const kanbanIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" v
 const stageBadge = (stage) => {
   const map = {
     Draft: "bg-surface-100 text-surface-600",
+    Rejected: "bg-red-100 text-red-700",
     New: "bg-blue-100 text-blue-700",
     "In Progress": "bg-blue-100 text-blue-700",
     Approval: "bg-amber-100 text-amber-700",
@@ -22,7 +24,8 @@ const stageBadge = (stage) => {
 };
 
 export default function Dashboard() {
-  const { ecos } = useData();
+  const { ecos, products, boms, deleteEco, clearEcos, deleteProduct, clearProducts, deleteBom, clearBoms } = useData();
+  const { canCreate, isAdmin, users, user, removeUser, clearUsers } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [view, setView] = useState("list");
@@ -46,6 +49,22 @@ export default function Dashboard() {
     { key: "stage", label: "Stage", render: (val) => stageBadge(val) },
     { key: "status", label: "Status", render: (val) => stageBadge(val) },
   ];
+
+  const handleDeleteOne = async (type, id) => {
+    if (!window.confirm(`Delete this ${type} record?`)) return;
+    if (type === "eco") await deleteEco(id);
+    if (type === "product") await deleteProduct(id);
+    if (type === "bom") await deleteBom(id);
+    if (type === "user") await removeUser(id);
+  };
+
+  const handleClearTable = async (type) => {
+    if (!window.confirm(`Delete all records in ${type} table?`)) return;
+    if (type === "ecos") await clearEcos();
+    if (type === "products") await clearProducts();
+    if (type === "boms") await clearBoms();
+    if (type === "users") await clearUsers();
+  };
 
   return (
     <Layout title="PLM Sentry Dashboard">
@@ -73,14 +92,16 @@ export default function Dashboard() {
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <button
-          onClick={() => navigate("/ecos/create")}
-          id="new-eco-button"
-          className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold rounded-xl shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30 transition-all flex items-center gap-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => navigate("/ecos/create")}
+            id="new-eco-button"
+            className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold rounded-xl shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30 transition-all flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New
+          </button>
+        )}
 
         <div className="flex items-center gap-3 flex-1 justify-center max-w-md w-full">
           <div className="relative flex-1">
@@ -142,6 +163,77 @@ export default function Dashboard() {
               />
             ))
           )}
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="mt-8 bg-white rounded-xl border border-surface-200 p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-surface-900">Admin Quick Delete</h3>
+            <span className="text-xs text-surface-500">Delete individual entries or clear a full table</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-surface-200 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-surface-800">Users</h4>
+                <button onClick={() => handleClearTable("users")} className="text-xs px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100">Clear Table</button>
+              </div>
+              <div className="space-y-2 max-h-52 overflow-auto">
+                {users.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded-lg border border-surface-200">
+                    <p className="text-sm text-surface-700">{u.name || u.email} ({u.role})</p>
+                    {u.id !== user?.id && <button onClick={() => handleDeleteOne("user", u.id)} className="text-xs text-red-600 hover:text-red-700">Delete</button>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-surface-200 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-surface-800">Products</h4>
+                <button onClick={() => handleClearTable("products")} className="text-xs px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100">Clear Table</button>
+              </div>
+              <div className="space-y-2 max-h-52 overflow-auto">
+                {products.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded-lg border border-surface-200">
+                    <p className="text-sm text-surface-700">{p.name}</p>
+                    <button onClick={() => handleDeleteOne("product", p.id)} className="text-xs text-red-600 hover:text-red-700">Delete</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-surface-200 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-surface-800">BoMs</h4>
+                <button onClick={() => handleClearTable("boms")} className="text-xs px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100">Clear Table</button>
+              </div>
+              <div className="space-y-2 max-h-52 overflow-auto">
+                {boms.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded-lg border border-surface-200">
+                    <p className="text-sm text-surface-700">{b.bomNumber} - {b.productName}</p>
+                    <button onClick={() => handleDeleteOne("bom", b.id)} className="text-xs text-red-600 hover:text-red-700">Delete</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-surface-200 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-surface-800">ECOs</h4>
+                <button onClick={() => handleClearTable("ecos")} className="text-xs px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100">Clear Table</button>
+              </div>
+              <div className="space-y-2 max-h-52 overflow-auto">
+                {ecos.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between bg-surface-50 px-3 py-2 rounded-lg border border-surface-200">
+                    <p className="text-sm text-surface-700">{e.title}</p>
+                    <button onClick={() => handleDeleteOne("eco", e.id)} className="text-xs text-red-600 hover:text-red-700">Delete</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </Layout>

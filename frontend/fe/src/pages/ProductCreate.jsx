@@ -13,6 +13,8 @@ export default function ProductCreate() {
     costPrice: "",
   });
   const [attachments, setAttachments] = useState([]);
+  const [bomDraft, setBomDraft] = useState({ componentName: "", quantity: "" });
+  const [bomComponents, setBomComponents] = useState([]);
   const [errors, setErrors] = useState({});
 
   const update = (field, value) => {
@@ -26,8 +28,22 @@ export default function ProductCreate() {
     else if (form.name.length > 255) errs.name = "Max 255 characters";
     if (!form.salesPrice || parseFloat(form.salesPrice) < 0) errs.salesPrice = "Valid sales price is required";
     if (!form.costPrice || parseFloat(form.costPrice) < 0) errs.costPrice = "Valid cost price is required";
+    if (bomComponents.length === 0) errs.bomComponents = "Add at least one BoM component";
     setErrors(errs);
     return Object.keys(errs).length === 0;
+  };
+
+  const addBomComponent = () => {
+    const name = bomDraft.componentName.trim();
+    const qty = parseInt(bomDraft.quantity, 10);
+    if (!name || !qty || qty <= 0) return;
+    setBomComponents((prev) => [...prev, { componentName: name, quantity: qty }]);
+    setBomDraft({ componentName: "", quantity: "" });
+    setErrors((prev) => ({ ...prev, bomComponents: "" }));
+  };
+
+  const removeBomComponent = (index) => {
+    setBomComponents((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -37,6 +53,7 @@ export default function ProductCreate() {
       salesPrice: parseFloat(form.salesPrice),
       costPrice: parseFloat(form.costPrice),
       attachments: attachments.map((f) => f.name),
+      bomComponents,
     });
     navigate("/products");
   };
@@ -101,6 +118,49 @@ export default function ProductCreate() {
                 />
                 {errors.costPrice && <p className="mt-1.5 text-xs text-danger-500">{errors.costPrice}</p>}
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-surface-700 mb-2">BoM Components *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  value={bomDraft.componentName}
+                  onChange={(e) => setBomDraft((prev) => ({ ...prev, componentName: e.target.value }))}
+                  placeholder="Component name"
+                  className="sm:col-span-2 w-full px-4 py-3 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={bomDraft.quantity}
+                    onChange={(e) => setBomDraft((prev) => ({ ...prev, quantity: e.target.value }))}
+                    placeholder="Qty"
+                    className="w-full px-4 py-3 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={addBomComponent}
+                    className="px-4 py-3 text-sm font-semibold bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+              {errors.bomComponents && <p className="mt-1.5 text-xs text-danger-500">{errors.bomComponents}</p>}
+              {bomComponents.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {bomComponents.map((c, idx) => (
+                    <div key={`${c.componentName}-${idx}`} className="flex items-center justify-between bg-surface-50 border border-surface-200 px-3 py-2 rounded-lg">
+                      <p className="text-sm text-surface-700">{c.componentName} - Qty {c.quantity}</p>
+                      <button type="button" onClick={() => removeBomComponent(idx)} className="text-xs text-danger-600 hover:text-danger-700">
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>

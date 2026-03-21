@@ -1,22 +1,24 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem("plm_theme") || "light");
+  const theme = "light";
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("plm_theme", theme);
-  }, [theme]);
+    document.documentElement.classList.remove("dark");
+    document.documentElement.style.colorScheme = "light";
+    localStorage.setItem("plm_theme", "light");
+  }, []);
 
   const value = useMemo(
     () => ({
       theme,
-      isDark: theme === "dark",
-      toggleTheme: () => setTheme((prev) => (prev === "dark" ? "light" : "dark")),
+      isDark: false,
+      toggleTheme: () => {},
     }),
-    [theme]
+    []
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

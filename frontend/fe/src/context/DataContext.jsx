@@ -12,14 +12,47 @@ const STAGES = [
 
 const toUiStatus = (status) => {
   if (status === "DRAFT") return { stage: "Draft", status: "Draft" };
+  if (status === "REJECTED") return { stage: "Draft", status: "Rejected" };
   if (status === "NEW") return { stage: "New", status: "In Progress" };
   if (status === "PENDING") return { stage: "Approval", status: "Pending" };
   if (status === "APPROVED") return { stage: "Done", status: "Approved" };
   return { stage: "Draft", status: "Draft" };
 };
 
+const toEcoChanges = (eco) => {
+  const changes = eco?.proposedChanges || {};
+  if (eco?.type === "BOM") {
+    const bomRows = (changes.components || []).map((c) => ({
+      component: c.componentName || c.name || "",
+      oldQty: c.oldQuantity ?? "-",
+      newQty: c.quantity ?? c.qty ?? "-",
+      operation: "Modified",
+    }));
+    return { product: [], bom: bomRows };
+  }
+
+  const productRows = [];
+  if (typeof changes.salePrice !== "undefined") {
+    productRows.push({
+      field: "Sale Price",
+      oldValue: changes.oldSalePrice ?? "-",
+      newValue: changes.salePrice,
+      status: "Modified",
+    });
+  }
+  if (typeof changes.costPrice !== "undefined") {
+    productRows.push({
+      field: "Cost Price",
+      oldValue: changes.oldCostPrice ?? "-",
+      newValue: changes.costPrice,
+      status: "Modified",
+    });
+  }
+  return { product: productRows, bom: [] };
+};
+
 export function DataProvider({ children }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [products, setProducts] = useState([]);
   const [boms, setBoms] = useState([]);
   const [ecos, setEcos] = useState([]);
@@ -78,6 +111,7 @@ export function DataProvider({ children }) {
             productName: e.product?.name || "",
             bomId: null,
             bomName: null,
+            proposedChanges: e.proposedChanges || {},
             userId: e.createdById,
             userName: e.createdBy?.name || e.createdBy?.email || "",
             effectiveDate: "",
@@ -85,7 +119,7 @@ export function DataProvider({ children }) {
             stage: mapped.stage,
             status: mapped.status,
             createdAt: new Date(e.createdAt).toISOString().split("T")[0],
-            changes: { bom: [], product: [] },
+            changes: toEcoChanges(e),
           };
         })
       );
@@ -111,12 +145,21 @@ export function DataProvider({ children }) {
   // ── Products CRUD ──
   const addProduct = async (product) => {
     const sku = `${product.name}`.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 8) || `SKU${Date.now()}`;
-    await api.products.create({
+    const created = await api.products.create({
       sku,
       name: product.name,
       initialSalePrice: product.salesPrice,
       initialCostPrice: product.costPrice,
     });
+    if (product.bomComponents?.length) {
+      await api.boms.create({
+        productId: created?.product?.id,
+        components: product.bomComponents.map((c) => ({
+          componentName: c.componentName,
+          quantity: c.quantity,
+        })),
+      });
+    }
     await loadAll();
   };
 
@@ -139,13 +182,55 @@ export function DataProvider({ children }) {
       title: eco.title,
       type: eco.ecoType === "BoM" ? "BOM" : "PRODUCT",
       productId: eco.productId,
-      proposedChanges: {},
+      proposedChanges: eco.proposedChanges || {},
     });
     await loadAll();
     return { id: created.id };
   };
 
-  const updateEco = () => {};
+  const updateEco = async (id, eco) => {
+    await api.ecos.update(id, {
+      title: eco.title,
+      type: eco.ecoType === "BoM" ? "BOM" : "PRODUCT",
+      productId: eco.productId,
+      proposedChanges: eco.proposedChanges || {},
+    });
+    await loadAll();
+  };
+
+  const deleteEco = async (id) => {
+    if (isAdmin) {
+      await api.ecos.adminRemove(id);
+    } else {
+      await api.ecos.remove(id);
+    }
+    await loadAll();
+  };
+
+  const clearEcos = async () => {
+    await api.ecos.clear();
+    await loadAll();
+  };
+
+  const deleteProduct = async (id) => {
+    await api.products.remove(id);
+    await loadAll();
+  };
+
+  const clearProducts = async () => {
+    await api.products.clear();
+    await loadAll();
+  };
+
+  const deleteBom = async (id) => {
+    await api.boms.remove(id);
+    await loadAll();
+  };
+
+  const clearBoms = async () => {
+    await api.boms.clear();
+    await loadAll();
+  };
 
   const startEco = async (id) => {
     await api.ecos.updateStatus(id, "NEW");
@@ -154,6 +239,10 @@ export function DataProvider({ children }) {
 
   const approveEco = async (id) => {
     await api.ecos.approve(id);
+    await loadAll();
+  };
+  const rejectEco = async (id) => {
+    await api.ecos.reject(id);
     await loadAll();
   };
 
@@ -173,9 +262,9 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider
       value={{
-        products, addProduct, updateProduct,
-        boms, addBom, updateBom,
-        ecos, addEco, updateEco, startEco, approveEco, moveEcoToApproval,
+        products, addProduct, updateProduct, deleteProduct, clearProducts,
+        boms, addBom, updateBom, deleteBom, clearBoms,
+        ecos, addEco, updateEco, deleteEco, clearEcos, startEco, approveEco, rejectEco, moveEcoToApproval,
         stages, addStage,
         approvals, addApproval, removeApproval,
       }}

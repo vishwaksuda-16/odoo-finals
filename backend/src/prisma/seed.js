@@ -6,8 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🚀 Seeding Admin Access...');
 
-  // 1. Optional: Clean only the User table (keeping your manual products if any)
-  // await prisma.user.deleteMany({});
 
   // 2. Hash the password for the Admin
   const hashedPassword = await bcrypt.hash('admin123', 10);

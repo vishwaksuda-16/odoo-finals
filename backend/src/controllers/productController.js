@@ -67,4 +67,41 @@ const createProduct = async (req, res) => {
   }
 };
 
-module.exports = { getAllActiveProducts, getProductHistory, createProduct };
+const deleteProduct = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.auditLog.deleteMany({ where: { targetId: id } });
+      await tx.eCO.deleteMany({ where: { productId: id } });
+      const boms = await tx.billOfMaterial.findMany({ where: { productId: id }, select: { id: true } });
+      const bomIds = boms.map((b) => b.id);
+      if (bomIds.length) {
+        await tx.boMComponent.deleteMany({ where: { bomId: { in: bomIds } } });
+        await tx.billOfMaterial.deleteMany({ where: { id: { in: bomIds } } });
+      }
+      await tx.productVersion.deleteMany({ where: { productId: id } });
+      await tx.product.delete({ where: { id } });
+    });
+    res.json({ message: "Product deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteAllProducts = async (req, res) => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.auditLog.deleteMany({});
+      await tx.eCO.deleteMany({});
+      await tx.boMComponent.deleteMany({});
+      await tx.billOfMaterial.deleteMany({});
+      await tx.productVersion.deleteMany({});
+      await tx.product.deleteMany({});
+    });
+    res.json({ message: "All product records deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { getAllActiveProducts, getProductHistory, createProduct, deleteProduct, deleteAllProducts };

@@ -8,6 +8,7 @@ export function usePermissions() {
     canStart,
     canViewStagesSettings,
     canViewApprovalsSettings,
+    canViewAuditLogs,
   } = useAuth();
 
   const role = user?.role?.toUpperCase();
@@ -22,6 +23,6 @@ export function usePermissions() {
     canManageUsers: isAdmin,
     canSeeProducts: !!role,
     canSeeBom: !!role,
-    canSeeReporting: !!role,
+    canSeeReporting: canViewAuditLogs,
   };
 }

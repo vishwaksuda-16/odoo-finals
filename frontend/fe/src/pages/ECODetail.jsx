@@ -7,6 +7,7 @@ import { usePermissions } from "../hooks/usePermissions";
 
 const stageColors = {
   Draft: "bg-surface-200 text-surface-700",
+  Rejected: "bg-red-100 text-red-700 border border-red-200",
   New: "bg-blue-100 text-blue-700 border border-blue-200",
   "In Progress": "bg-blue-100 text-blue-700 border border-blue-200",
   Approval: "bg-amber-100 text-amber-700 border border-amber-200",
@@ -27,7 +28,7 @@ export default function ECODetail() {
   const navigate = useNavigate();
   const { user, canStart, canApprove } = useAuth();
   const { role } = usePermissions();
-  const { ecos, startEco, moveEcoToApproval, approveEco, approvals } = useData();
+  const { ecos, startEco, moveEcoToApproval, approveEco, rejectEco, deleteEco, approvals } = useData();
   const eco = ecos.find((e) => e.id === id);
 
   // Auto-start if redirected from create with ?start=true
@@ -59,6 +60,13 @@ export default function ECODetail() {
   const handleStart = () => { if (canStart) startEco(id); };
   const handleMoveToApproval = () => { if (canStart) moveEcoToApproval(id); };
   const handleApprove = () => { if (canApprove) approveEco(id); };
+  const handleReject = () => { if (canApprove) rejectEco(id); };
+  const handleDeleteDraft = async () => {
+    if (eco.stage !== "Draft") return;
+    if (!window.confirm("Delete this draft ECO request?")) return;
+    await deleteEco(id);
+    navigate("/");
+  };
 
   const stageSteps = ["New", "Approval", "Done"];
   const currentStepIndex = stageSteps.indexOf(eco.stage === "Draft" || eco.stage === "In Progress" ? "New" : eco.stage);
@@ -90,6 +98,11 @@ export default function ECODetail() {
               <span className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                 ECO Applied
+              </span>
+            )}
+            {eco.status === "Rejected" && (
+              <span className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200">
+                Rejected by Approver
               </span>
             )}
           </div>
@@ -174,8 +187,8 @@ export default function ECODetail() {
             <h3 className="font-bold text-surface-900 mb-4">Actions</h3>
             <div className="space-y-3">
 
-              {/* ▶ Start ECO - visible to all roles only at Draft */}
-              {eco.stage === "Draft" && (
+              {/* ▶ Start ECO - ENGINEER & ADMIN only at Draft */}
+              {eco.stage === "Draft" && canStart && (
                 <button
                   onClick={handleStart}
                   id="eco-start-action"
@@ -183,6 +196,24 @@ export default function ECODetail() {
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                   Start ECO
+                </button>
+              )}
+              {eco.stage === "Draft" && canStart && (
+                <button
+                  onClick={() => navigate(`/ecos/${eco.id}/edit`)}
+                  id="eco-edit-draft-action"
+                  className="w-full py-2.5 bg-surface-100 text-surface-800 font-semibold rounded-xl border border-surface-300 hover:bg-surface-200 transition-all text-sm"
+                >
+                  Edit Draft Request
+                </button>
+              )}
+              {eco.stage === "Draft" && canStart && (
+                <button
+                  onClick={handleDeleteDraft}
+                  id="eco-delete-draft-action"
+                  className="w-full py-2.5 bg-red-50 text-red-700 font-semibold rounded-xl border border-red-200 hover:bg-red-100 transition-all text-sm"
+                >
+                  Delete Draft Request
                 </button>
               )}
 
@@ -207,14 +238,24 @@ export default function ECODetail() {
               {eco.stage === "Approval" && (
                 <>
                   {canApprove ? (
-                    <button
-                      onClick={handleApprove}
-                      id="eco-approve-action"
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                      Validate / Approve
-                    </button>
+                    <>
+                      <button
+                        onClick={handleApprove}
+                        id="eco-approve-action"
+                        className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        Validate / Approve
+                      </button>
+                      <button
+                        onClick={handleReject}
+                        id="eco-reject-action"
+                        className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold rounded-xl shadow-md shadow-red-600/20 hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Reject
+                      </button>
+                    </>
                   ) : (
                     <div className="w-full py-2.5 bg-amber-50 text-amber-700 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 border border-amber-200">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
