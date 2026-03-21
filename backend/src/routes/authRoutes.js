@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, logout } = require('../controllers/authController');
-
-// POST /api/auth/register
-router.post('/register', register);
+const { register, login, logout, listUsers, resetPassword } = require('../controllers/authController');
+const { verifyToken, isAdmin } = require('../middleware/auth');
 
 // POST /api/auth/login
 router.post('/login', login);
 
 // POST /api/auth/logout
 router.post('/logout', logout);
+router.get('/users', verifyToken, listUsers);
+router.patch('/reset-password', verifyToken, resetPassword);
+router.post('/register', verifyToken, isAdmin, register);
 
 module.exports = router;

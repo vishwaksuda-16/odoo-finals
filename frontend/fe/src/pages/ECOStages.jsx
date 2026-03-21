@@ -15,7 +15,7 @@ export default function ECOStages() {
     const user = users.find((u) => u.id === form.userId);
     addApproval({
       userId: form.userId,
-      userName: user?.loginId || "",
+      userName: user?.name || user?.email || "",
       approvalType: form.approvalType,
       stageId: "s2", // Approval stage
     });
@@ -112,7 +112,7 @@ export default function ECOStages() {
                   >
                     <option value="">Select User</option>
                     {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.loginId}</option>
+                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
                     ))}
                   </select>
                 </div>

@@ -2,6 +2,18 @@ const { PrismaClient } = require('@prisma/client');
 const { sendNotification } = require('../utils/mailer');
 const prisma = new PrismaClient();
 
+const getECOs = async (req, res) => {
+  try {
+    const ecos = await prisma.eCO.findMany({
+      include: { product: true, createdBy: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(ecos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // 1. CREATE ECO + Notify Approvers
 const createECO = async (req, res) => {
   const { title, type, productId, proposedChanges } = req.body;
@@ -12,7 +24,7 @@ const createECO = async (req, res) => {
         type,
         productId,
         proposedChanges,
-        status: 'PENDING',
+        status: 'DRAFT',
         createdById: req.user.userId 
       }
     });
@@ -102,4 +114,22 @@ const approveECO = async (req, res) => {
   }
 };
 
-module.exports = { createECO, approveECO };
+const updateECOStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    const allowed = ['NEW', 'PENDING'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: "Unsupported status transition" });
+    }
+    const eco = await prisma.eCO.update({
+      where: { id },
+      data: { status }
+    });
+    res.json(eco);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { createECO, approveECO, getECOs, updateECOStatus };

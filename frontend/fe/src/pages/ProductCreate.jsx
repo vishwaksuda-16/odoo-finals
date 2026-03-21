@@ -30,9 +30,9 @@ export default function ProductCreate() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
-    addProduct({
+    await addProduct({
       name: form.name.trim(),
       salesPrice: parseFloat(form.salesPrice),
       costPrice: parseFloat(form.costPrice),

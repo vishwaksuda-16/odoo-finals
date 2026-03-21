@@ -15,7 +15,7 @@ export default function Approvals() {
     const user = users.find((u) => u.id === form.userId);
     addApproval({
       userId: form.userId,
-      userName: user?.loginId || "",
+      userName: user?.name || user?.email || "",
       approvalType: form.approvalType,
       stageId: "s2",
     });
@@ -89,7 +89,7 @@ export default function Approvals() {
                 >
                   <option value="">Select User</option>
                   {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.loginId} ({u.role})</option>
+                    <option key={u.id} value={u.id}>{u.name || u.email} ({u.role})</option>
                   ))}
                 </select>
               </div>

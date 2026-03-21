@@ -11,18 +11,46 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  app:
+  backend:
     build: ./backend
     container_name: plm-backend
+    # --- THIS PART IS THE FIX ---
+    env_file:
+      - ./backend/.env
+    # ----------------------------
     ports:
       - "5000:5000"
     environment:
+      # These will override what is in the .env file if there is a conflict
       DATABASE_URL: "postgresql://postgres:password@db:5432/postgres"
+      PORT: 5000
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend/fe
+    container_name: plm-frontend
+    # Optional: If you have a .env in frontend, add it here too
+    # env_file:
+    #   - ./frontend/fe/.env
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: "http://localhost:5000/api"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/fe:/app
       - /app/node_modules
 
 volumes:
