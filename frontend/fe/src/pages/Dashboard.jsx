@@ -30,7 +30,10 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState("list");
 
-  const filtered = ecos.filter((eco) => {
+  const isApproverLike = ["APPROVER", "ADMIN"].includes(user?.role);
+  const visibleEcos = isAdmin || isApproverLike ? ecos : ecos.filter((eco) => eco.userId === user?.id);
+
+  const filtered = visibleEcos.filter((eco) => {
     const q = search.toLowerCase();
     return (
       eco.title.toLowerCase().includes(q) ||
@@ -39,6 +42,39 @@ export default function Dashboard() {
       eco.ecoType.toLowerCase().includes(q)
     );
   });
+  const byStatus = {
+    Draft: visibleEcos.filter((e) => e.stage === "Draft").length,
+    InProgress: visibleEcos.filter((e) => e.stage === "New").length,
+    Pending: visibleEcos.filter((e) => e.stage === "Approval").length,
+    Approved: visibleEcos.filter((e) => e.status === "Approved").length,
+    Rejected: visibleEcos.filter((e) => e.status === "Rejected").length,
+  };
+  const roleTotals = visibleEcos.reduce((acc, eco) => {
+    const key = eco.userName || "Unknown";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const contributorRows = Object.entries(roleTotals)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+  const maxContributor = contributorRows[0]?.count || 1;
+
+  const pieSegments = [
+    { label: "In Progress", value: byStatus.InProgress, color: "#2563eb" },
+    { label: "Approval", value: byStatus.Pending, color: "#f59e0b" },
+    { label: "Approved", value: byStatus.Approved, color: "#059669" },
+    { label: "Draft", value: byStatus.Draft, color: "#64748b" },
+    { label: "Rejected", value: byStatus.Rejected, color: "#dc2626" },
+  ].filter((s) => s.value > 0);
+  const pieTotal = pieSegments.reduce((sum, s) => sum + s.value, 0) || 1;
+  let accum = 0;
+  const pieGradient = pieSegments.map((segment) => {
+    const start = (accum / pieTotal) * 100;
+    accum += segment.value;
+    const end = (accum / pieTotal) * 100;
+    return `${segment.color} ${start}% ${end}%`;
+  }).join(", ");
 
   const columns = [
     { key: "title", label: "Name (ECO Title)", render: (val) => <span className="font-medium text-surface-900">{val}</span> },
@@ -71,10 +107,10 @@ export default function Dashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total ECOs", value: ecos.length, color: "from-primary-500 to-primary-600", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg> },
-          { label: "In Progress", value: ecos.filter((e) => e.stage === "New" || e.stage === "Approval").length, color: "from-amber-500 to-orange-500", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> },
-          { label: "Approved", value: ecos.filter((e) => e.status === "Approved").length, color: "from-emerald-500 to-green-600", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> },
-          { label: "Draft", value: ecos.filter((e) => e.stage === "Draft").length, color: "from-surface-500 to-surface-600", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> },
+          { label: "Total ECOs", value: visibleEcos.length, color: "from-primary-500 to-primary-600", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg> },
+          { label: "In Progress", value: visibleEcos.filter((e) => e.stage === "New" || e.stage === "Approval").length, color: "from-amber-500 to-orange-500", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> },
+          { label: "Approved", value: visibleEcos.filter((e) => e.status === "Approved").length, color: "from-emerald-500 to-green-600", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> },
+          { label: "Draft", value: visibleEcos.filter((e) => e.stage === "Draft").length, color: "from-surface-500 to-surface-600", icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl border border-surface-200 p-5 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
@@ -89,6 +125,84 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Role-based analytics (only for applicable users) */}
+      {isApproverLike ? (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+          <div className="xl:col-span-2 bg-white rounded-xl border border-surface-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-surface-900">Changes by Contributor</h3>
+              <span className="text-xs text-surface-500">Top users by ECO count</span>
+            </div>
+            <div className="space-y-3">
+              {contributorRows.length === 0 ? (
+                <p className="text-sm text-surface-500">No contributor data available.</p>
+              ) : contributorRows.map((row) => (
+                <div key={row.name}>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium text-surface-700">{row.name}</span>
+                    <span className="text-surface-500">{row.count}</span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-surface-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary-600 to-primary-400"
+                      style={{ width: `${Math.max((row.count / maxContributor) * 100, 8)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-surface-200 p-5">
+            <h3 className="text-base font-bold text-surface-900 mb-4">Status Distribution</h3>
+            <div className="flex items-center justify-center">
+              <div
+                className="w-44 h-44 rounded-full relative"
+                style={{ background: `conic-gradient(${pieGradient || "#e2e8f0 0% 100%"})` }}
+              >
+                <div className="absolute inset-7 rounded-full bg-white border border-surface-100 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-surface-700">{visibleEcos.length}</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              {pieSegments.map((s) => (
+                <div key={s.label} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                    <span className="text-surface-600">{s.label}</span>
+                  </div>
+                  <span className="font-semibold text-surface-700">{s.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-surface-200 p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-surface-900">My ECO Pipeline</h3>
+            <span className="text-xs text-surface-500">Engineer-only view</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {[
+              { label: "Draft", value: byStatus.Draft, color: "text-surface-700 bg-surface-100" },
+              { label: "In Progress", value: byStatus.InProgress, color: "text-blue-700 bg-blue-100" },
+              { label: "Approval", value: byStatus.Pending, color: "text-amber-700 bg-amber-100" },
+              { label: "Approved", value: byStatus.Approved, color: "text-emerald-700 bg-emerald-100" },
+              { label: "Rejected", value: byStatus.Rejected, color: "text-red-700 bg-red-100" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-surface-200 p-3">
+                <p className="text-xs text-surface-500">{item.label}</p>
+                <div className={`inline-block mt-2 px-2.5 py-1 rounded-full text-sm font-bold ${item.color}`}>
+                  {item.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -137,12 +251,40 @@ export default function Dashboard() {
 
       {/* Content */}
       {view === "list" ? (
-        <DataTable
-          columns={columns}
-          data={filtered}
-          onRowClick={(eco) => navigate(`/ecos/${eco.id}`)}
-          emptyMessage="No ECOs found. Create your first Engineering Change Order."
-        />
+        <div className="space-y-4">
+          <DataTable
+            columns={[
+              ...columns,
+              { key: "userName", label: "Requested By" },
+              { key: "createdAt", label: "Created Date" },
+            ]}
+            data={filtered}
+            onRowClick={(eco) => navigate(`/ecos/${eco.id}`)}
+            emptyMessage="No ECOs found. Create your first Engineering Change Order."
+          />
+          {isApproverLike && (
+            <div className="bg-white rounded-xl border border-surface-200 p-5">
+              <h3 className="text-base font-bold text-surface-900 mb-3">Detailed Pipeline Stats</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+                <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                  <p className="text-xs text-blue-700">In Progress</p><p className="text-xl font-bold text-blue-900">{byStatus.InProgress}</p>
+                </div>
+                <div className="rounded-lg border border-amber-100 bg-amber-50 p-3">
+                  <p className="text-xs text-amber-700">Awaiting Approval</p><p className="text-xl font-bold text-amber-900">{byStatus.Pending}</p>
+                </div>
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                  <p className="text-xs text-emerald-700">Approved</p><p className="text-xl font-bold text-emerald-900">{byStatus.Approved}</p>
+                </div>
+                <div className="rounded-lg border border-surface-200 bg-surface-50 p-3">
+                  <p className="text-xs text-surface-600">Draft</p><p className="text-xl font-bold text-surface-800">{byStatus.Draft}</p>
+                </div>
+                <div className="rounded-lg border border-red-100 bg-red-50 p-3">
+                  <p className="text-xs text-red-700">Rejected</p><p className="text-xl font-bold text-red-900">{byStatus.Rejected}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.length === 0 ? (

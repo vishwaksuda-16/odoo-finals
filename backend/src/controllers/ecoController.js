@@ -2,6 +2,12 @@ const { PrismaClient } = require('@prisma/client');
 const { sendNotification } = require('../utils/mailer');
 const prisma = new PrismaClient();
 
+const notifyUsers = async (users, subject, text, html) => {
+  users
+    .filter((u) => u?.email)
+    .forEach((u) => sendNotification(u.email, subject, text, html));
+};
+
 const getECOs = async (req, res) => {
   try {
     const ecos = await prisma.eCO.findMany({
@@ -107,13 +113,19 @@ const approveECO = async (req, res) => {
       });
 
 
-      sendNotification(
-        eco.createdBy.email,
-        "ECO Approved & Live",
-        `Your change request "${eco.title}" has been finalized. Product Version ${newVersion.versionNumber} is now active.`,
-        `<h2>Change Implemented</h2><p>The ECO for <b>${eco.title}</b> was approved by the lead engineer.</p>`
-      );
-      // 
+      const notifyList = await tx.user.findMany({
+        where: { OR: [{ id: eco.createdById }, { role: 'ADMIN' }, { role: 'APPROVER' }] },
+        select: { id: true, email: true }
+      });
+      const uniqueNotifyList = notifyList.filter((u, idx, arr) => arr.findIndex((x) => x.id === u.id) === idx);
+      uniqueNotifyList.forEach((u) => {
+        sendNotification(
+          u.email,
+          "ECO Approved & Live",
+          `ECO "${eco.title}" was approved by ${role}. Product Version ${newVersion.versionNumber} is now active.`,
+          `<h2>Change Implemented</h2><p><b>${eco.title}</b> was approved by <b>${role}</b>. Product Version ${newVersion.versionNumber} is now active.</p>`
+        );
+      });
 
       return newVersion;
     });
@@ -154,15 +166,17 @@ const rejectECO = async (req, res) => {
       }
     });
 
-    const creator = await prisma.user.findUnique({ where: { id: eco.createdById } });
-    if (creator?.email) {
-      sendNotification(
-        creator.email,
-        `ECO Rejected: ${eco.title}`,
-        `Your change request "${eco.title}" was rejected and sent back for rework.`,
-        `<h3>ECO Rejected</h3><p>Your request <b>${eco.title}</b> has been rejected. Please revise and resubmit.</p>`
-      );
-    }
+    const recipients = await prisma.user.findMany({
+      where: { OR: [{ id: eco.createdById }, { role: 'ADMIN' }] },
+      select: { id: true, email: true }
+    });
+    const uniqueRecipients = recipients.filter((u, idx, arr) => arr.findIndex((x) => x.id === u.id) === idx);
+    await notifyUsers(
+      uniqueRecipients,
+      `ECO Rejected: ${eco.title}`,
+      `ECO "${eco.title}" was rejected by ${role}.`,
+      `<h3>ECO Rejected</h3><p><b>${eco.title}</b> was rejected by <b>${role}</b>. Please revise and resubmit.</p>`
+    );
 
     res.json(updated);
   } catch (error) {
@@ -194,15 +208,20 @@ const updateECOStatus = async (req, res) => {
     });
 
     if (status === 'PENDING') {
-      const approvers = await prisma.user.findMany({ where: { role: 'APPROVER' } });
-      approvers.forEach(appr => {
-        sendNotification(
-          appr.email,
-          `Action Required: ECO ${current.title}`,
-          `A change request was submitted for product ${current.productId}.`,
-          `<h3>New ECO for Review</h3><p><b>Title:</b> ${current.title}</p><p>Please review and approve/reject.</p>`
-        );
+      const recipients = await prisma.user.findMany({
+        where: { OR: [{ role: 'APPROVER' }, { role: 'ADMIN' }] },
+        select: { id: true, email: true, role: true }
       });
+      const actor = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: { role: true, name: true, email: true }
+      });
+      await notifyUsers(
+        recipients.filter((u) => u.id !== req.user.userId),
+        `Action Required: ECO ${current.title}`,
+        `A change request "${current.title}" was moved to PENDING by ${actor?.role || req.user.role}.`,
+        `<h3>New ECO for Review</h3><p><b>Title:</b> ${current.title}</p><p>Moved to <b>PENDING</b> by <b>${actor?.role || req.user.role}</b>. Please review and approve/reject.</p>`
+      );
     }
 
     res.json(eco);

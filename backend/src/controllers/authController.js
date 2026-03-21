@@ -3,18 +3,24 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = new PrismaClient();
 
+const isValidGmail = (email = '') => /^[^\s@]+@gmail\.com$/i.test(String(email).trim());
+
 // REGISTER: Create a new user
 const register = async (req, res) => {
   const { email, password, name, role } = req.body;
   try {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!isValidGmail(normalizedEmail)) {
+      return res.status(400).json({ message: "Only @gmail.com email addresses are allowed" });
+    }
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         name,
         password: hashedPassword,
         role: role || 'ENGINEER' // Default role
@@ -31,7 +37,8 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const isValid = await bcrypt.compare(password, user.password);
@@ -108,6 +115,40 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { email, name, role } = req.body;
+  try {
+    if (id === req.user.userId && role && role !== 'ADMIN') {
+      return res.status(400).json({ message: "Admin cannot remove own admin access" });
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ message: "User not found" });
+
+    if (email !== undefined && !isValidGmail(email)) {
+      return res.status(400).json({ message: "Only @gmail.com email addresses are allowed" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(email !== undefined ? { email: String(email).trim().toLowerCase() } : {}),
+        ...(name !== undefined ? { name: String(name).trim() } : {}),
+        ...(role !== undefined ? { role } : {})
+      },
+      select: { id: true, email: true, name: true, role: true }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const deleteAllUsers = async (req, res) => {
   try {
     await prisma.$transaction(async (tx) => {
@@ -121,4 +162,4 @@ const deleteAllUsers = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, listUsers, resetPassword, deleteUser, deleteAllUsers };
+module.exports = { register, login, logout, listUsers, resetPassword, deleteUser, updateUser, deleteAllUsers };

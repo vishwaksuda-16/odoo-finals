@@ -24,6 +24,7 @@ const api = {
     login: (email, password) => request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
     register: (payload) => request("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
     users: () => request("/auth/users"),
+    updateUser: (id, payload) => request(`/auth/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     deleteUser: (id) => request(`/auth/users/${id}`, { method: "DELETE" }),
     clearUsers: () => request("/auth/users", { method: "DELETE" }),
     resetPassword: (payload) => request("/auth/reset-password", { method: "PATCH", body: JSON.stringify(payload) }),

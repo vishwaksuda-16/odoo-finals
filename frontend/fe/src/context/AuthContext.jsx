@@ -74,6 +74,11 @@ export function AuthProvider({ children }) {
     await refreshUsers();
   };
 
+  const editUser = async (id, payload) => {
+    await api.auth.updateUser(id, payload);
+    await refreshUsers();
+  };
+
   const clearUsers = async () => {
     await api.auth.clearUsers();
     await refreshUsers();
@@ -97,7 +102,7 @@ export function AuthProvider({ children }) {
   const canViewAuditLogs = role === "APPROVER" || role === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ user, users, login, signup, logout, refreshUsers, removeUser, clearUsers, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, canViewAuditLogs, loading }}>
+    <AuthContext.Provider value={{ user, users, login, signup, logout, refreshUsers, removeUser, editUser, clearUsers, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, canViewAuditLogs, loading }}>
       {children}
     </AuthContext.Provider>
   );

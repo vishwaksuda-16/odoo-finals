@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 
-const COMPANY_DOMAIN = "@company.com";
+const COMPANY_DOMAIN = "@gmail.com";
 
 export default function CreateUser() {
-  const { signup, isAdmin, users } = useAuth();
+  const { signup, editUser, isAdmin, users, user } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -104,6 +104,33 @@ export default function CreateUser() {
     }
   };
 
+  const handleEditUser = async (targetUser) => {
+    const name = window.prompt("Update name", targetUser.name || "");
+    if (name === null) return;
+
+    const email = window.prompt("Update Gmail address", targetUser.email || "");
+    if (email === null) return;
+    if (!email.toLowerCase().endsWith(COMPANY_DOMAIN)) {
+      setErrors({ email: `Email must end with ${COMPANY_DOMAIN}` });
+      return;
+    }
+
+    const roleInput = window.prompt("Update role (ENGINEER / APPROVER / ADMIN)", targetUser.role || "ENGINEER");
+    if (roleInput === null) return;
+    const role = roleInput.trim().toUpperCase();
+    if (!["ENGINEER", "APPROVER", "ADMIN"].includes(role)) {
+      setErrors({ role: "Role must be ENGINEER, APPROVER, or ADMIN" });
+      return;
+    }
+
+    try {
+      await editUser(targetUser.id, { name: name.trim(), email: email.trim().toLowerCase(), role });
+      setSuccess(`User "${name || email}" updated successfully`);
+    } catch (err) {
+      setErrors({ loginId: err.message || "Failed to update user" });
+    }
+  };
+
   const inputClass = (field) =>
     `w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${
       errors[field]
@@ -124,7 +151,7 @@ export default function CreateUser() {
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <div>
             <p className="text-sm font-semibold text-primary-800">Admin Function</p>
-            <p className="text-xs text-primary-600">Create new user accounts with company email validation. Only {COMPANY_DOMAIN} emails are accepted.</p>
+            <p className="text-xs text-primary-600">Create and manage user accounts. Only {COMPANY_DOMAIN} emails are accepted.</p>
           </div>
         </div>
 
@@ -161,14 +188,14 @@ export default function CreateUser() {
             <div>
               <label className="block text-sm font-semibold text-surface-700 mb-2">
                 Company Email *
-                <span className="ml-2 text-xs font-normal text-surface-400">({COMPANY_DOMAIN})</span>
+                <span className="ml-2 text-xs font-normal text-surface-400">(only {COMPANY_DOMAIN})</span>
               </label>
               <input
                 id="create-user-email"
                 type="email"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
-                placeholder={`user${COMPANY_DOMAIN}`}
+                placeholder={`example${COMPANY_DOMAIN}`}
                 className={inputClass("email")}
               />
               {errors.email && <p className="mt-1.5 text-xs text-danger-500">{errors.email}</p>}
@@ -274,11 +301,11 @@ export default function CreateUser() {
         {/* Existing Users */}
         <div className="mt-6 bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-surface-200 bg-surface-50/50">
-            <h3 className="font-bold text-surface-900">Existing Users ({users.length})</h3>
+              <h3 className="font-bold text-surface-900">Existing Users ({users.length}) - Admin CRUD</h3>
           </div>
           <div className="divide-y divide-surface-100">
             {users.map((u) => (
-              <div key={u.id} className="px-6 py-3 flex items-center justify-between">
+              <div key={u.id} className="px-6 py-3 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs">
                     {(u.name || u.email)?.charAt(0).toUpperCase()}
@@ -288,11 +315,22 @@ export default function CreateUser() {
                     <p className="text-xs text-surface-500">{u.email}</p>
                   </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                  u.role === "ADMIN" ? "bg-primary-100 text-primary-700" :
-                  u.role === "APPROVER" ? "bg-emerald-100 text-emerald-700" :
-                  "bg-blue-100 text-blue-700"
-                }`}>{u.role?.toUpperCase()}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    u.role === "ADMIN" ? "bg-primary-100 text-primary-700" :
+                    u.role === "APPROVER" ? "bg-emerald-100 text-emerald-700" :
+                    "bg-blue-100 text-blue-700"
+                  }`}>{u.role?.toUpperCase()}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleEditUser(u)}
+                    disabled={u.id === user?.id}
+                    className="px-3 py-1 text-xs font-semibold rounded-lg border border-surface-300 text-surface-700 hover:bg-surface-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={u.id === user?.id ? "Use profile flow for your own account" : "Edit user"}
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
             ))}
           </div>

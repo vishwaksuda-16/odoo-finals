@@ -68,7 +68,7 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your company email"
+                placeholder="Enter your Gmail address"
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-surface-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
               />
             </div>
@@ -112,15 +112,15 @@ export default function Login() {
           <p className="text-xs text-surface-400 font-medium mb-2">Demo Credentials:</p>
           <div className="space-y-1.5 text-xs">
             <div className="flex items-center justify-between text-surface-400">
-              <span><span className="text-surface-500 font-semibold mr-1">Admin:</span> admin@company.com</span>
+              <span><span className="text-surface-500 font-semibold mr-1">Admin:</span> admin@gmail.com</span>
               <span className="text-surface-500">Admin@123</span>
             </div>
             <div className="flex items-center justify-between text-surface-400">
-              <span><span className="text-surface-500 font-semibold mr-1">Engineer:</span> engineer@company.com</span>
+              <span><span className="text-surface-500 font-semibold mr-1">Engineer:</span> engineer@gmail.com</span>
               <span className="text-surface-500">Eng@1234</span>
             </div>
             <div className="flex items-center justify-between text-surface-400">
-              <span><span className="text-surface-500 font-semibold mr-1">Approver:</span> approver@company.com</span>
+              <span><span className="text-surface-500 font-semibold mr-1">Approver:</span> approver@gmail.com</span>
               <span className="text-surface-500">Appr@123</span>
             </div>
           </div>
