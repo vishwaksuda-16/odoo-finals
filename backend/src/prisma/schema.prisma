@@ -8,11 +8,12 @@ datasource db {
 }
 
 model User {
-  id       String @id @default(uuid())
-  email    String @unique
+  id       String     @id @default(uuid())
+  email    String     @unique
   password String
-  role     String // "ADMIN", "ENGINEER", "APPROVER"
+  role     String     // "ADMIN", "ENGINEER", "APPROVER"
   ecos     ECO[]
+  logs     AuditLog[]
 }
 
 model Product {
@@ -20,6 +21,7 @@ model Product {
   sku       String           @unique
   name      String
   versions  ProductVersion[]
+  boms      BillOfMaterial[]
   ecos      ECO[]
   createdAt DateTime         @default(now())
 }
@@ -35,15 +37,44 @@ model ProductVersion {
   createdAt     DateTime @default(now())
 }
 
+model BillOfMaterial {
+  id            String         @id @default(uuid())
+  versionNumber Int            @default(1)
+  status        String         @default("ACTIVE") // ACTIVE, ARCHIVED
+  productId     String
+  product       Product        @relation(fields: [productId], references: [id])
+  components    BoMComponent[]
+  createdAt     DateTime       @default(now())
+}
+
+model BoMComponent {
+  id            String         @id @default(uuid())
+  bomId         String
+  bom           BillOfMaterial @relation(fields: [bomId], references: [id])
+  componentName String
+  quantity      Int
+}
+
 model ECO {
   id              String   @id @default(uuid())
   title           String
   type            String   // "PRODUCT", "BOM"
-  status          String   @default("NEW") // "NEW", "UNDER_REVIEW", "APPROVED", "REJECTED"
-  proposedChanges Json     // Store { salePrice: 120, costPrice: 80 }
+  status          String   @default("NEW")
+  proposedChanges Json
   productId       String
   product         Product  @relation(fields: [productId], references: [id])
   createdById     String
   createdBy       User     @relation(fields: [createdById], references: [id])
   createdAt       DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  targetId  String
+  oldValue  Json?
+  newValue  Json?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  timestamp DateTime @default(now())
 }
