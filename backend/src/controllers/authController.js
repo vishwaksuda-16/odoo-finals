@@ -53,7 +53,7 @@ const login = async (req, res) => {
 const logout = async (req, res) => {
   // In a stateless JWT app, the server doesn't need to do much.
   // We just send a success message. Member B will delete the token from LocalStorage.
-  res.json({ message: "Logged out successfully. Please delete your token." });
+  res.json({ message: "Logged out successfully." });
 };
 
 module.exports = { register, login, logout };
