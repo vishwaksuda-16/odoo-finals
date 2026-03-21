@@ -43,7 +43,7 @@ const login = async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    res.json({ token, role: user.role, name: user.name });
+    res.json({ token, role: user.role, name: user.name, userId: user.id, email: user.email });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -56,4 +56,41 @@ const logout = async (req, res) => {
   res.json({ message: "Logged out successfully." });
 };
 
-module.exports = { register, login, logout };
+const listUsers = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, email: true, name: true, role: true },
+      orderBy: { email: 'asc' }
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const valid = await bcrypt.compare(currentPassword || "", user.password);
+    if (!valid) return res.status(401).json({ message: "Current password is invalid" });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+
+    res.json({ message: "Password reset successful" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { register, login, logout, listUsers, resetPassword };

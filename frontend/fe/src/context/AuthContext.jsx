@@ -1,91 +1,87 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import api from "../services/api";
 
 const AuthContext = createContext(null);
-
-const DEMO_USERS = [
-  { id: "u1", loginId: "admin1", email: "admin@company.com", password: "Admin@123", role: "admin" },
-  { id: "u2", loginId: "engineer1", email: "engineer@company.com", password: "Eng@1234", role: "engineer" },
-  { id: "u3", loginId: "approver1", email: "approver@company.com", password: "Appr@123", role: "approver" },
-];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem("plm_users");
-    return saved ? JSON.parse(saved) : DEMO_USERS;
-  });
-
-  // Sync users to localStorage
-  useEffect(() => {
-    localStorage.setItem("plm_users", JSON.stringify(users));
-  }, [users]);
+  const [users, setUsers] = useState([]);
 
   // Restore session from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("plm_auth");
-    if (saved) {
-      setUser(JSON.parse(saved));
-    }
-    setLoading(false);
+    const init = async () => {
+      const saved = localStorage.getItem("plm_auth");
+      if (saved) {
+        setUser(JSON.parse(saved));
+        try {
+          const dbUsers = await api.auth.users();
+          setUsers(dbUsers);
+        } catch {
+          setUsers([]);
+        }
+      }
+      setLoading(false);
+    };
+    init();
   }, []);
 
   const login = async (email, password) => {
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 400));
-    
-    const found = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-
-    if (found) {
-      const userData = { 
-        email: found.email, 
-        role: found.role.toUpperCase(), 
-        name: found.loginId, 
-        loginId: found.loginId 
+    try {
+      const result = await api.auth.login(email, password);
+      const userData = {
+        id: result.userId,
+        email: result.email || email,
+        role: result.role?.toUpperCase(),
+        name: result.name || (result.email || email).split("@")[0],
+        loginId: result.name || (result.email || email).split("@")[0],
       };
       setUser(userData);
       localStorage.setItem("plm_auth", JSON.stringify(userData));
-      localStorage.setItem("role", found.role.toLowerCase());
+      localStorage.setItem("role", result.role?.toLowerCase());
+      localStorage.setItem("plm_token", result.token);
+      const dbUsers = await api.auth.users();
+      setUsers(dbUsers);
       return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Invalid email or password" };
     }
-    return { success: false, error: "Invalid email or password" };
   };
 
   const signup = async (loginId, email, password, role) => {
-    await new Promise(r => setTimeout(r, 400));
-
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return { success: false, error: "Email already exists" };
+    try {
+      await api.auth.register({
+        name: loginId,
+        email,
+        password,
+        role: role?.toUpperCase(),
+      });
+      const dbUsers = await api.auth.users();
+      setUsers(dbUsers);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Unable to create account" };
     }
-
-    const newUser = {
-      id: "u" + Date.now(),
-      loginId,
-      email: email.toLowerCase(),
-      password,
-      role: role.toLowerCase()
-    };
-
-    setUsers(prev => [...prev, newUser]);
-    return { success: true };
   };
 
   const logout = () => {
     setUser(null);
+    setUsers([]);
     localStorage.removeItem("plm_auth");
     localStorage.removeItem("role");
+    localStorage.removeItem("plm_token");
   };
 
   const role = user?.role?.toUpperCase();
   const canCreate = role === "ENGINEER" || role === "ADMIN";
   const canApprove = role === "APPROVER" || role === "ADMIN";
-  const canStart = role === "ENGINEER" || role === "ADMIN";
+  const canStart = !!role;
   const isAdmin = role === "ADMIN";
+  const canViewStagesSettings = role === "ADMIN" || role === "APPROVER";
+  const canViewApprovalsSettings = role === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ user, users, login, signup, logout, canCreate, canApprove, canStart, isAdmin, loading }}>
+    <AuthContext.Provider value={{ user, users, login, signup, logout, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, loading }}>
       {children}
     </AuthContext.Provider>
   );

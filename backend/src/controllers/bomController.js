@@ -1,6 +1,32 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+const getAllBOMs = async (req, res) => {
+  try {
+    const boms = await prisma.billOfMaterial.findMany({
+      include: { product: true, components: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(boms);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getBOMById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const bom = await prisma.billOfMaterial.findUnique({
+      where: { id },
+      include: { product: true, components: true }
+    });
+    if (!bom) return res.status(404).json({ message: "BOM not found" });
+    res.json(bom);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // GET the active BOM for a product
 const getProductBoM = async (req, res) => {
   const { id } = req.params; // Product ID
@@ -104,4 +130,4 @@ const approveBoMECO = async (ecoId, userId) => {
   });
 };
 
-module.exports = { approveBoMECO, getProductBoM, createBoM };;
+module.exports = { approveBoMECO, getProductBoM, createBoM, getAllBOMs, getBOMById };

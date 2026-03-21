@@ -83,7 +83,7 @@ export default function CreateUser() {
     }
 
     // Role
-    if (!["engineer", "approver", "admin"].includes(form.role)) {
+    if (!["engineer", "approver"].includes(form.role)) {
       errs.role = "Select a valid role";
     }
 
@@ -114,7 +114,6 @@ export default function CreateUser() {
   const roleOptions = [
     { value: "engineer", label: "Engineer", icon: null, desc: "Create & edit ECOs, start workflows" },
     { value: "approver", label: "Approver", icon: null, desc: "Review & approve ECOs" },
-    { value: "admin", label: "Admin", icon: null, desc: "Full access including user creation" },
   ];
 
   return (
@@ -206,7 +205,7 @@ export default function CreateUser() {
             {/* Role Selector */}
             <div>
               <label className="block text-sm font-semibold text-surface-700 mb-3">Role *</label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {roleOptions.map((opt) => (
                   <button
                     key={opt.value}
@@ -282,16 +281,16 @@ export default function CreateUser() {
               <div key={u.id} className="px-6 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs">
-                    {u.loginId?.charAt(0).toUpperCase()}
+                    {(u.name || u.email)?.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-surface-800">{u.loginId}</p>
+                    <p className="text-sm font-medium text-surface-800">{u.name || u.email}</p>
                     <p className="text-xs text-surface-500">{u.email}</p>
                   </div>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                  u.role === "admin" ? "bg-primary-100 text-primary-700" :
-                  u.role === "approver" ? "bg-emerald-100 text-emerald-700" :
+                  u.role === "ADMIN" ? "bg-primary-100 text-primary-700" :
+                  u.role === "APPROVER" ? "bg-emerald-100 text-emerald-700" :
                   "bg-blue-100 text-blue-700"
                 }`}>{u.role?.toUpperCase()}</span>
               </div>

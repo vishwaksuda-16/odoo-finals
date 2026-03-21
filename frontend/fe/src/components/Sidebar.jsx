@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { usePermissions } from "../hooks/usePermissions";
 
 const menuIcon = (
   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
@@ -33,6 +34,14 @@ const subLinkClass = ({ isActive }) =>
 export default function Sidebar({ isOpen, onToggle }) {
   const [expandedMenu, setExpandedMenu] = useState(null);
   const location = useLocation();
+  const {
+    canSeeProducts,
+    canSeeBom,
+    canSeeReporting,
+    canEditStagesSettings,
+    canEditApprovalsSettings,
+    canManageUsers,
+  } = usePermissions();
 
   const toggleMenu = (menu) => {
     setExpandedMenu(expandedMenu === menu ? null : menu);
@@ -41,6 +50,7 @@ export default function Sidebar({ isOpen, onToggle }) {
   // Auto-expand the correct section based on current route
   const isMasterDataActive = ["/products", "/bom"].some((p) => location.pathname.startsWith(p));
   const isSettingsActive = ["/settings"].some((p) => location.pathname.startsWith(p));
+  const hasSettingsMenu = canEditStagesSettings || canEditApprovalsSettings || canManageUsers;
 
   return (
     <>
@@ -77,6 +87,7 @@ export default function Sidebar({ isOpen, onToggle }) {
           </NavLink>
 
           {/* Master Data */}
+          {(canSeeProducts || canSeeBom) && (
           <div>
             <button
               onClick={() => toggleMenu("masterData")}
@@ -97,18 +108,20 @@ export default function Sidebar({ isOpen, onToggle }) {
             <div className={`overflow-hidden transition-all duration-300 ${
               expandedMenu === "masterData" || isMasterDataActive ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"
             }`}>
-              <NavLink to="/products" className={subLinkClass}>Products</NavLink>
-              <NavLink to="/bom" className={subLinkClass}>Bills of Materials</NavLink>
+              {canSeeProducts && <NavLink to="/products" className={subLinkClass}>Products</NavLink>}
+              {canSeeBom && <NavLink to="/bom" className={subLinkClass}>Bills of Materials</NavLink>}
             </div>
           </div>
+          )}
 
           {/* Reporting */}
-          <NavLink to="/reporting" className={navLinkClass}>
+          {canSeeReporting && <NavLink to="/reporting" className={navLinkClass}>
             {icons.reporting}
             <span className={`transition-all duration-300 ${isOpen ? "opacity-100" : "lg:hidden"}`}>Reporting</span>
-          </NavLink>
+          </NavLink>}
 
           {/* Settings */}
+          {hasSettingsMenu && (
           <div>
             <button
               onClick={() => toggleMenu("settings")}
@@ -129,13 +142,14 @@ export default function Sidebar({ isOpen, onToggle }) {
             <div className={`overflow-hidden transition-all duration-300 ${
               expandedMenu === "settings" || isSettingsActive ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"
             }`}>
-              <NavLink to="/settings/stages" className={subLinkClass}>ECO Stages</NavLink>
-              <NavLink to="/settings/approvals" className={subLinkClass}>Approvals</NavLink>
-              {localStorage.getItem("role") === "admin" && (
+              {canEditStagesSettings && <NavLink to="/settings/stages" className={subLinkClass}>ECO Stages</NavLink>}
+              {canEditApprovalsSettings && <NavLink to="/settings/approvals" className={subLinkClass}>Approvals</NavLink>}
+              {canManageUsers && (
                 <NavLink to="/settings/users" className={subLinkClass}>Create User</NavLink>
               )}
             </div>
           </div>
+          )}
         </nav>
 
         {/* Footer */}

@@ -34,10 +34,10 @@ export default function BOMCreate() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
     const product = products.find((p) => p.id === form.finishedProduct);
-    addBom({
+    await addBom({
       bomNumber: form.bomNumber.trim().toUpperCase(),
       finishedProduct: form.finishedProduct,
       productName: product?.name || "",

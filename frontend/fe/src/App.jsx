@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -44,6 +45,18 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function RoleRoute({ children, allow }) {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+  if (!user) return <Navigate to="/login" replace />;
+  if (!allow.includes(user.role?.toUpperCase())) return <Navigate to="/" replace />;
+  return children;
+}
+
 function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null; // Wait for session restoration
@@ -76,8 +89,8 @@ function AppRoutes() {
       <Route path="/reporting" element={<ProtectedRoute><Reporting /></ProtectedRoute>} />
 
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/settings/stages" element={<ProtectedRoute><ECOStages /></ProtectedRoute>} />
-      <Route path="/settings/approvals" element={<ProtectedRoute><Approvals /></ProtectedRoute>} />
+      <Route path="/settings/stages" element={<RoleRoute allow={["ADMIN", "APPROVER"]}><ECOStages /></RoleRoute>} />
+      <Route path="/settings/approvals" element={<RoleRoute allow={["ADMIN"]}><Approvals /></RoleRoute>} />
 
       {/* Admin-Only Routes */}
       <Route path="/settings/users" element={<AdminRoute><CreateUser /></AdminRoute>} />
@@ -91,11 +104,13 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <DataProvider>
-          <AppRoutes />
-        </DataProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <DataProvider>
+            <AppRoutes />
+          </DataProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

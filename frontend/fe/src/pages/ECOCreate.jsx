@@ -47,10 +47,10 @@ export default function ECOCreate() {
   const selectedProduct = products.find((p) => p.id === form.productId);
   const selectedBom = boms.find((b) => b.id === form.bomId);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canCreate) return;
     if (!validate()) return;
-    const eco = addEco({
+    const eco = await addEco({
       title: form.title.trim(),
       ecoType: form.ecoType,
       productId: form.productId,
@@ -66,10 +66,10 @@ export default function ECOCreate() {
     navigate(`/ecos/${eco.id}`);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!canStart) return;
     if (!validate()) return;
-    const eco = addEco({
+    const eco = await addEco({
       title: form.title.trim(),
       ecoType: form.ecoType,
       productId: form.productId,

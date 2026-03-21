@@ -1,47 +1,39 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Starting seed...');
+  console.log('🚀 Seeding Admin Access...');
 
-  // 1. Clean existing data (Optional but helpful for retrying)
-  await prisma.auditLog.deleteMany({});
-  await prisma.eCO.deleteMany({});
-  await prisma.productVersion.deleteMany({});
-  await prisma.product.deleteMany({});
-  await prisma.user.deleteMany({});
+  // 1. Optional: Clean only the User table (keeping your manual products if any)
+  // await prisma.user.deleteMany({});
 
-  // 2. Create Users
-  const hashedPassword = await bcrypt.hash('password123', 10);
-  const engineer = await prisma.user.create({
-    data: { email: 'eng@plm.com', password: hashedPassword, role: 'ENGINEER' }
-  });
-  const approver = await prisma.user.create({
-    data: { email: 'boss@plm.com', password: hashedPassword, role: 'APPROVER' }
-  });
+  // 2. Hash the password for the Admin
+  const hashedPassword = await bcrypt.hash('admin123', 10);
 
-  // 3. Create initial Product
-  const product = await prisma.product.create({
-    data: {
-      sku: 'WD-TABLE-001',
-      name: 'Wooden Office Table',
-      versions: {
-        create: {
-          versionNumber: 1,
-          salePrice: 150.00,
-          costPrice: 80.00,
-          status: 'ACTIVE'
-        }
-      }
-    }
+  // 3. Create the single Admin record
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@plm.com' },
+    update: {},
+    create: {
+      email: 'admin@plm.com',
+      password: hashedPassword,
+      name: 'System Administrator',
+      role: 'ADMIN', // This gives you full access to all tabs
+    },
   });
 
-  console.log('Seed successful!');
+  console.log('Admin Seed Successful!');
+  console.log(' Email: admin@plm.com');
+  console.log(' Password: admin123');
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
