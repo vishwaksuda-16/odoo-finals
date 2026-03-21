@@ -40,6 +40,7 @@ const api = {
     create: (payload) => request("/ecos", { method: "POST", body: JSON.stringify(payload) }),
     updateStatus: (id, status) => request(`/ecos/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
     approve: (id) => request(`/ecos/${id}/approve`, { method: "PATCH" }),
+    reject: (id) => request(`/ecos/${id}/reject`, { method: "PATCH" }),
   },
 };
 

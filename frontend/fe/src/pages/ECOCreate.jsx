@@ -244,7 +244,7 @@ export default function ECOCreate() {
                 </button>
               )}
               {/* Start — visible for Engineer & Admin only */}
-              {canStart && (
+              {canCreate && (
                 <button
                   onClick={handleStart}
                   id="eco-start-button"

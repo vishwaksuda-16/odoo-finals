@@ -156,6 +156,10 @@ export function DataProvider({ children }) {
     await api.ecos.approve(id);
     await loadAll();
   };
+  const rejectEco = async (id) => {
+    await api.ecos.reject(id);
+    await loadAll();
+  };
 
   const moveEcoToApproval = async (id) => {
     await api.ecos.updateStatus(id, "PENDING");
@@ -175,7 +179,7 @@ export function DataProvider({ children }) {
       value={{
         products, addProduct, updateProduct,
         boms, addBom, updateBom,
-        ecos, addEco, updateEco, startEco, approveEco, moveEcoToApproval,
+        ecos, addEco, updateEco, startEco, approveEco, rejectEco, moveEcoToApproval,
         stages, addStage,
         approvals, addApproval, removeApproval,
       }}

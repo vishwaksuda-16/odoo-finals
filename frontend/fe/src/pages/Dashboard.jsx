@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import DataTable from "../components/DataTable";
 import KanbanCard from "../components/KanbanCard";
 import { useData } from "../context/DataContext";
+import { useAuth } from "../context/AuthContext";
 
 const listIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
 const kanbanIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
@@ -23,6 +24,7 @@ const stageBadge = (stage) => {
 
 export default function Dashboard() {
   const { ecos } = useData();
+  const { canCreate } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [view, setView] = useState("list");
@@ -73,14 +75,16 @@ export default function Dashboard() {
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <button
-          onClick={() => navigate("/ecos/create")}
-          id="new-eco-button"
-          className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold rounded-xl shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30 transition-all flex items-center gap-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => navigate("/ecos/create")}
+            id="new-eco-button"
+            className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold rounded-xl shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30 transition-all flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New
+          </button>
+        )}
 
         <div className="flex items-center gap-3 flex-1 justify-center max-w-md w-full">
           <div className="relative flex-1">

@@ -74,22 +74,22 @@ function AppRoutes() {
       {/* Protected Routes */}
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/ecos" element={<ProtectedRoute><ECOList /></ProtectedRoute>} />
-      <Route path="/ecos/create" element={<ProtectedRoute><ECOCreate /></ProtectedRoute>} />
+      <Route path="/ecos/create" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ECOCreate /></RoleRoute>} />
       <Route path="/ecos/:id" element={<ProtectedRoute><ECODetail /></ProtectedRoute>} />
       <Route path="/changes/:id" element={<ProtectedRoute><ChangeView /></ProtectedRoute>} />
 
       <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-      <Route path="/products/create" element={<ProtectedRoute><ProductCreate /></ProtectedRoute>} />
+      <Route path="/products/create" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ProductCreate /></RoleRoute>} />
       <Route path="/products/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
 
       <Route path="/bom" element={<ProtectedRoute><BOM /></ProtectedRoute>} />
-      <Route path="/bom/create" element={<ProtectedRoute><BOMCreate /></ProtectedRoute>} />
+      <Route path="/bom/create" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><BOMCreate /></RoleRoute>} />
       <Route path="/bom/:id" element={<ProtectedRoute><BOMDetail /></ProtectedRoute>} />
 
-      <Route path="/reporting" element={<ProtectedRoute><Reporting /></ProtectedRoute>} />
+      <Route path="/reporting" element={<RoleRoute allow={["ADMIN", "APPROVER"]}><Reporting /></RoleRoute>} />
 
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/settings/stages" element={<RoleRoute allow={["ADMIN", "APPROVER"]}><ECOStages /></RoleRoute>} />
+      <Route path="/settings/stages" element={<RoleRoute allow={["ADMIN"]}><ECOStages /></RoleRoute>} />
       <Route path="/settings/approvals" element={<RoleRoute allow={["ADMIN"]}><Approvals /></RoleRoute>} />
 
       {/* Admin-Only Routes */}

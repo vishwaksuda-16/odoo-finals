@@ -75,13 +75,14 @@ export function AuthProvider({ children }) {
   const role = user?.role?.toUpperCase();
   const canCreate = role === "ENGINEER" || role === "ADMIN";
   const canApprove = role === "APPROVER" || role === "ADMIN";
-  const canStart = !!role;
+  const canStart = role === "ENGINEER" || role === "ADMIN";
   const isAdmin = role === "ADMIN";
-  const canViewStagesSettings = role === "ADMIN" || role === "APPROVER";
+  const canViewStagesSettings = role === "ADMIN";
   const canViewApprovalsSettings = role === "ADMIN";
+  const canViewAuditLogs = role === "APPROVER" || role === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ user, users, login, signup, logout, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, loading }}>
+    <AuthContext.Provider value={{ user, users, login, signup, logout, canCreate, canApprove, canStart, isAdmin, canViewStagesSettings, canViewApprovalsSettings, canViewAuditLogs, loading }}>
       {children}
     </AuthContext.Provider>
   );

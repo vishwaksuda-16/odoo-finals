@@ -51,6 +51,7 @@ const createECO = async (req, res) => {
 const approveECO = async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
+  const role = req.user.role;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -61,6 +62,10 @@ const approveECO = async (req, res) => {
       });
       
       if (!eco) throw new Error("ECO not found");
+      if (eco.status !== 'PENDING') throw new Error("ECO must be in approval stage");
+      if (eco.createdById === userId && role !== 'ADMIN') {
+        throw new Error("Separation of duties: creator cannot approve own ECO");
+      }
 
       const currentActive = await tx.productVersion.findFirst({
         where: { productId: eco.productId, status: 'ACTIVE' }
@@ -114,6 +119,42 @@ const approveECO = async (req, res) => {
   }
 };
 
+const rejectECO = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
+  const role = req.user.role;
+
+  try {
+    const eco = await prisma.eCO.findUnique({ where: { id } });
+    if (!eco) return res.status(404).json({ message: "ECO not found" });
+    if (eco.status !== 'PENDING') {
+      return res.status(400).json({ message: "ECO must be in approval stage" });
+    }
+    if (eco.createdById === userId && role !== 'ADMIN') {
+      return res.status(403).json({ message: "Separation of duties: creator cannot reject own ECO" });
+    }
+
+    const updated = await prisma.eCO.update({
+      where: { id },
+      data: { status: 'DRAFT' }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "ECO_REJECTED",
+        targetId: updated.id,
+        oldValue: JSON.stringify({ status: 'PENDING' }),
+        newValue: JSON.stringify({ status: 'DRAFT' }),
+        userId
+      }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const updateECOStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -122,6 +163,16 @@ const updateECOStatus = async (req, res) => {
     if (!allowed.includes(status)) {
       return res.status(400).json({ message: "Unsupported status transition" });
     }
+    const current = await prisma.eCO.findUnique({ where: { id } });
+    if (!current) return res.status(404).json({ message: "ECO not found" });
+
+    const invalidTransition =
+      (status === 'NEW' && current.status !== 'DRAFT') ||
+      (status === 'PENDING' && current.status !== 'NEW');
+    if (invalidTransition) {
+      return res.status(400).json({ message: "Invalid status transition" });
+    }
+
     const eco = await prisma.eCO.update({
       where: { id },
       data: { status }
@@ -132,4 +183,4 @@ const updateECOStatus = async (req, res) => {
   }
 };
 
-module.exports = { createECO, approveECO, getECOs, updateECOStatus };
+module.exports = { createECO, approveECO, rejectECO, getECOs, updateECOStatus };

@@ -29,4 +29,11 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { verifyToken, isApprover, isAdmin };
+const isCreator = (req, res, next) => {
+  if (req.user.role !== 'ENGINEER' && req.user.role !== 'ADMIN') {
+    return res.status(403).json({ message: "Requires Engineer or Admin role" });
+  }
+  next();
+};
+
+module.exports = { verifyToken, isApprover, isAdmin, isCreator };
