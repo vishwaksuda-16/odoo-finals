@@ -7,14 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- USER MANAGEMENT ---
+
 model User {
-  id       String     @id @default(uuid())
-  email    String     @unique
+  id       String  @id @default(uuid())
+  email    String  @unique
   password String
-  role     String     // "ADMIN", "ENGINEER", "APPROVER"
-  ecos     ECO[]
-  logs     AuditLog[]
+  name     String?
+  role     Role    @default(ENGINEER)
+
+  // Named relation to match the ECO model below
+  ecos ECO[]      @relation("UserToECO")
+  logs AuditLog[]
 }
+
+enum Role {
+  ENGINEER
+  APPROVER
+  ADMIN
+}
+
+// --- PRODUCT & VERSIONING ---
 
 model Product {
   id        String           @id @default(uuid())
@@ -37,6 +50,8 @@ model ProductVersion {
   createdAt     DateTime @default(now())
 }
 
+// --- BILL OF MATERIALS ---
+
 model BillOfMaterial {
   id            String         @id @default(uuid())
   versionNumber Int            @default(1)
@@ -55,18 +70,26 @@ model BoMComponent {
   quantity      Int
 }
 
+// --- CHANGE MANAGEMENT (ECO) ---
+
 model ECO {
-  id              String   @id @default(uuid())
+  id              String @id @default(uuid())
   title           String
-  type            String   // "PRODUCT", "BOM"
-  status          String   @default("NEW")
+  type            String // "PRODUCT", "BOM"
+  status          String @default("NEW") // "NEW", "PENDING", "APPROVED", "REJECTED"
   proposedChanges Json
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id])
-  createdById     String
-  createdBy       User     @relation(fields: [createdById], references: [id])
-  createdAt       DateTime @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  createdById String
+  // This must match the name in the User model
+  createdBy   User   @relation("UserToECO", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
 }
+
+// --- AUDIT & TRACEABILITY ---
 
 model AuditLog {
   id        String   @id @default(uuid())

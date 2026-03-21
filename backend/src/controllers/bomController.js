@@ -1,6 +1,44 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { createAuditEntry } = require('../utils/logger'); // We created this earlier
+
+// GET the active BOM for a product
+const getProductBoM = async (req, res) => {
+  const { id } = req.params; // Product ID
+  try {
+    const bom = await prisma.billOfMaterial.findFirst({
+      where: { productId: id, status: 'ACTIVE' },
+      include: { components: true }
+    });
+    
+    if (!bom) return res.status(404).json({ message: "No active BOM found for this product" });
+    res.json(bom);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// CREATE a new BOM for a product
+const createBoM = async (req, res) => {
+  const { productId, components } = req.body; // components: [{name, qty}, ...]
+  try {
+    const newBoM = await prisma.billOfMaterial.create({
+      data: {
+        productId,
+        status: 'ACTIVE',
+        components: {
+          create: components.map(c => ({
+            componentName: c.componentName,
+            quantity: c.quantity
+          }))
+        }
+      },
+      include: { components: true }
+    });
+    res.status(201).json(newBoM);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 const approveBoMECO = async (ecoId, userId) => {
   return await prisma.$transaction(async (tx) => {
@@ -52,10 +90,18 @@ const approveBoMECO = async (ecoId, userId) => {
     });
 
     // 6. Log it
-    await createAuditEntry(userId, "BOM_VERSION_BUMP", eco.productId, currentBoM, newBoM);
+    await tx.auditLog.create({
+        data: {
+            action: "BOM_VERSION_BUMP",
+            targetId: eco.productId,
+            oldValue: currentBoM ? JSON.stringify(currentBoM) : null,
+            newValue: JSON.stringify(newBoM),
+            userId: userId
+        }
+    });
 
     return newBoM;
   });
 };
 
-module.exports = { approveBoMECO };
+module.exports = { approveBoMECO, getProductBoM, createBoM };;
