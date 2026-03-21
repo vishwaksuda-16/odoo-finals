@@ -61,15 +61,14 @@ const sendNotification = async (to, subject, text, html) => {
   const formattedHtml = buildHtmlTemplate(subject, contentHtml);
   const plainText = text && text.trim() ? text.trim() : stripHtml(contentHtml);
 
-  transporter.sendMail({
+  await transporter.sendMail({
     from: '"PLM Sentry" <nowshathyasir61@gmail.com>',
     to,
     subject,
     text: plainText,
     html: formattedHtml
-  })
-  .then(() => console.log(` Email sent to ${to}`))
-  .catch((error) => console.error(" Email failed:", error.message));
+  });
+  console.log(` Email sent to ${to}`);
 };
 
 module.exports = { sendNotification };

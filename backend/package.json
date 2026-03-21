@@ -6,7 +6,12 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node src/prisma/seed.js"
+    "generate": "prisma generate --schema=src/prisma/schema.prisma",
+    "migrate:deploy": "prisma migrate deploy --schema=src/prisma/schema.prisma",
+    "db:prepare": "npm run migrate:deploy && npm run generate",
+    "seed": "node src/prisma/seed.js",
+    "seed:full": "npm run db:prepare && npm run seed",
+    "seed:push": "npm run generate && npx prisma db push --schema=src/prisma/schema.prisma && npm run seed"
   },
   "prisma": {
     "seed": "node src/prisma/seed.js"

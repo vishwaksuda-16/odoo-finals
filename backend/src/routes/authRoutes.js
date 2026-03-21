@@ -1,11 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, logout ,listUsers, resetPassword, deleteUser, updateUser, deleteAllUsers} = require('../controllers/authController');
+const {
+  register,
+  login,
+  logout,
+  listUsers,
+  forgotPassword,
+  resetPasswordWithOtp,
+  resetPassword,
+  deleteUser,
+  updateUser,
+  deleteAllUsers
+} = require('../controllers/authController');
 const {verifyToken,isAdmin} = require('../middleware/auth');
 
 
 // POST /api/auth/login
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password-otp', resetPasswordWithOtp);
 
 // POST /api/auth/logout
 router.post('/logout', logout);

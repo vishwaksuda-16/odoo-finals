@@ -6,14 +6,22 @@ function getToken() {
 
 async function request(path, options = {}) {
   const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+  } catch (e) {
+    if (e?.name === "TypeError") {
+      throw new Error(`Cannot reach API at ${API_BASE}. Is the backend running on port 5000?`);
+    }
+    throw e;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.message || data?.error || "Request failed");
   return data;
@@ -28,6 +36,13 @@ const api = {
     deleteUser: (id) => request(`/auth/users/${id}`, { method: "DELETE" }),
     clearUsers: () => request("/auth/users", { method: "DELETE" }),
     resetPassword: (payload) => request("/auth/reset-password", { method: "PATCH", body: JSON.stringify(payload) }),
+    forgotPassword: (email) =>
+      request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+    resetPasswordWithOtp: (email, otp, newPassword) =>
+      request("/auth/reset-password-otp", {
+        method: "POST",
+        body: JSON.stringify({ email, otp, newPassword }),
+      }),
   },
   products: {
     list: () => request("/products"),

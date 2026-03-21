@@ -19,6 +19,18 @@ model User {
   // Named relation to match the ECO model below
   ecos ECO[]      @relation("UserToECO")
   logs AuditLog[]
+  passwordResetOtps PasswordResetOtp[]
+}
+
+model PasswordResetOtp {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otpHash   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 enum Role {

@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import ECOStages from "./pages/ECOStages";
 import Approvals from "./pages/Approvals";
 import CreateUser from "./pages/CreateUser";
+import ForgotPassword from "./pages/ForgotPassword";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -70,6 +71,7 @@ function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
       {/* Protected Routes */}

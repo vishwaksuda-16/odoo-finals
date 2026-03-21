@@ -1,7 +1,13 @@
+const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { sendNotification } = require('../utils/mailer');
 const prisma = new PrismaClient();
+
+function generateSixDigitOtp() {
+  return String(100000 + crypto.randomInt(900000));
+}
 
 const isValidGmail = (email = '') => /^[^\s@]+@gmail\.com$/i.test(String(email).trim());
 
@@ -59,6 +65,121 @@ const login = async (req, res) => {
 // LOGOUT: Stateless logout
 const logout = async (req, res) => {
   res.json({ message: "Logged out successfully." });
+};
+
+/** Request OTP by email (Nodemailer). */
+const forgotPassword = async (req, res) => {
+  const generic =
+    'If that email is registered, you will receive a one-time code shortly.';
+  try {
+    const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user || !isValidGmail(normalizedEmail)) {
+      return res.json({ message: generic });
+    }
+
+    const mailConfigured = !!(process.env.MAIL_USER && process.env.MAIL_PASS);
+    if (!mailConfigured && process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ message: 'Password reset email is not configured.' });
+    }
+
+    await prisma.passwordResetOtp.deleteMany({ where: { userId: user.id } });
+
+    const otp = generateSixDigitOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await prisma.passwordResetOtp.create({
+      data: { userId: user.id, otpHash, expiresAt }
+    });
+
+    const payload = { message: generic };
+
+    if (mailConfigured) {
+      try {
+        await sendNotification(
+          user.email,
+          'PLM Sentry — password reset code',
+          `Your one-time password reset code is: ${otp}\nIt expires in 15 minutes.\nIf you did not request this, ignore this email.`,
+          `<p>Your one-time password reset code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px;color:#1e40af">${otp}</p><p style="color:#64748b;font-size:14px">This code expires in <b>15 minutes</b>.</p><p style="font-size:12px;color:#94a3b8">If you did not request a reset, you can ignore this email.</p>`
+        );
+      } catch (err) {
+        console.error('Forgot-password email failed:', err.message);
+        if (process.env.NODE_ENV !== 'production') {
+          payload.devOtp = otp;
+          payload.message = `${generic} (dev: email failed; use devOtp below)`;
+        } else {
+          return res.status(503).json({ message: 'Could not send email. Try again later.' });
+        }
+      }
+    } else {
+      console.warn('[auth] MAIL_USER/MAIL_PASS not set — OTP (dev only):', otp);
+      if (process.env.NODE_ENV !== 'production') {
+        payload.devOtp = otp;
+        payload.message = `${generic} (dev: check server console or devOtp)`;
+      }
+    }
+
+    return res.json(payload);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/** Set new password using email + OTP from email. */
+const resetPasswordWithOtp = async (req, res) => {
+  try {
+    const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
+    const otp = String(req.body?.otp || '').trim();
+    const newPassword = req.body?.newPassword;
+
+    if (!normalizedEmail || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+
+    const rows = await prisma.passwordResetOtp.findMany({
+      where: { userId: user.id, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    let matched = null;
+    for (const row of rows) {
+      const ok = await bcrypt.compare(otp, row.otpHash);
+      if (ok) {
+        matched = row;
+        break;
+      }
+    }
+
+    if (!matched) {
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword }
+      });
+      await tx.passwordResetOtp.deleteMany({ where: { userId: user.id } });
+    });
+
+    res.json({ message: 'Password updated. You can sign in now.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 const listUsers = async (req, res) => {
@@ -162,4 +283,15 @@ const deleteAllUsers = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, listUsers, resetPassword, deleteUser, updateUser, deleteAllUsers };
+module.exports = {
+  register,
+  login,
+  logout,
+  listUsers,
+  forgotPassword,
+  resetPasswordWithOtp,
+  resetPassword,
+  deleteUser,
+  updateUser,
+  deleteAllUsers
+};
