@@ -18,7 +18,6 @@ services:
     ports:
       - "5000:5000"
     environment:
-      # NOTE: We use 'db' (the service name) instead of 'localhost'
       DATABASE_URL: "postgresql://postgres:password@db:5432/postgres"
     depends_on:
       - db
