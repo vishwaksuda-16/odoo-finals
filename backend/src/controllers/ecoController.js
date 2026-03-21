@@ -1,7 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
+const { sendNotification } = require('../utils/mailer');
 const prisma = new PrismaClient();
 
-// 1. ADD THE MISSING CREATE FUNCTION
+// 1. CREATE ECO + Notify Approvers
 const createECO = async (req, res) => {
   const { title, type, productId, proposedChanges } = req.body;
   try {
@@ -10,25 +11,43 @@ const createECO = async (req, res) => {
         title,
         type,
         productId,
-        proposedChanges, // Ensure this is a JSON object
+        proposedChanges,
         status: 'PENDING',
-        createdById: req.user.userId // Added from JWT middleware
+        createdById: req.user.userId 
       }
     });
+
+    // --- NOTIFICATION LOGIC ---
+    const approvers = await prisma.user.findMany({ where: { role: 'APPROVER' } });
+    approvers.forEach(appr => {
+      sendNotification(
+        appr.email,
+        ` Action Required: New ECO ${title}`,
+        `Engineer ${req.user.email} has submitted a new change request for Product ${productId}.`,
+        `<h3>New ECO for Review</h3><p><b>Title:</b> ${title}</p><p>Please log in to the PLM Dashboard to approve or reject.</p>`
+      );
+    });
+    // ---------------------------
+
     res.status(201).json(newEco);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// 2. CONVERT approveECO to an Express Handler
+// 2. APPROVE ECO + Notify Original Engineer
 const approveECO = async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const eco = await tx.eCO.findUnique({ where: { id } });
+      // Fetch the ECO first to get the creator's info
+      const eco = await tx.eCO.findUnique({ 
+        where: { id },
+        include: { createdBy: true } 
+      });
+      
       if (!eco) throw new Error("ECO not found");
 
       const currentActive = await tx.productVersion.findFirst({
@@ -55,7 +74,6 @@ const approveECO = async (req, res) => {
 
       await tx.eCO.update({ where: { id }, data: { status: 'APPROVED' } });
 
-      // Traceability: Add Audit Log
       await tx.auditLog.create({
         data: {
           action: "PRODUCT_VERSION_BUMP",
@@ -66,6 +84,15 @@ const approveECO = async (req, res) => {
         }
       });
 
+
+      sendNotification(
+        eco.createdBy.email,
+        "ECO Approved & Live",
+        `Your change request "${eco.title}" has been finalized. Product Version ${newVersion.versionNumber} is now active.`,
+        `<h2>Change Implemented</h2><p>The ECO for <b>${eco.title}</b> was approved by the lead engineer.</p>`
+      );
+      // 
+
       return newVersion;
     });
 
@@ -75,5 +102,4 @@ const approveECO = async (req, res) => {
   }
 };
 
-// 3. EXPORT BOTH
 module.exports = { createECO, approveECO };
