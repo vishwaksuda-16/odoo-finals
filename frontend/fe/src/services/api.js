@@ -1,7 +1,8 @@
-import axios from "axios";
+// API service placeholder — currently using in-memory DataContext
+// Replace with real API calls when backend is ready
 
-const api = axios.create({
-    baseURL: "http://localhost:5000/api",
-});
+const API_BASE = "http://localhost:5000/api";
 
-export default api;
+export default {
+  baseURL: API_BASE,
+};

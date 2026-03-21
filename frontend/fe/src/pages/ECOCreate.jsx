@@ -1,93 +1,262 @@
-import Header from "../components/Header";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Layout from "../components/Layout";
+import { useAuth } from "../context/AuthContext";
+import { useData } from "../context/DataContext";
 
 export default function ECOCreate() {
-    return (
-        <div className="flex-1 bg-gray-100 min-h-screen">
+  const { user, canCreate, canStart } = useAuth();
+  const { products, boms, addEco } = useData();
+  const navigate = useNavigate();
 
-            {/* Header */}
-            <Header />
+  const role = localStorage.getItem("role");
+  const isReadOnlyRole = role === "approver";
 
-            <div className="p-6">
+  const [form, setForm] = useState({
+    title: "",
+    ecoType: "Product",
+    productId: "",
+    bomId: "",
+    effectiveDate: "",
+    versionUpdate: false,
+  });
+  const [errors, setErrors] = useState({});
+  const [saved, setSaved] = useState(false);
 
-                <h2 className="text-xl font-semibold mb-4">Create ECO</h2>
+  const update = (field, value) => {
+    if (isReadOnlyRole) return; // Block edits for unauthorized role
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "ecoType" && value !== "BoM") {
+        next.bomId = "";
+      }
+      return next;
+    });
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
-                <div className="bg-white p-6 rounded shadow space-y-4">
+  const validate = () => {
+    const errs = {};
+    if (!form.title.trim()) errs.title = "Title is required";
+    if (!form.productId) errs.productId = "Product is required";
+    if (form.ecoType === "BoM" && !form.bomId) errs.bomId = "Bill of Materials is required";
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
-                    {/* Title */}
-                    <div>
-                        <label className="block mb-1 font-medium">Title *</label>
-                        <input
-                            type="text"
-                            className="w-full border p-2 rounded"
-                        />
-                    </div>
+  const selectedProduct = products.find((p) => p.id === form.productId);
+  const selectedBom = boms.find((b) => b.id === form.bomId);
 
-                    {/* ECO Type */}
-                    <div>
-                        <label className="block mb-1 font-medium">ECO Type *</label>
-                        <select className="w-full border p-2 rounded">
-                            <option>Product</option>
-                            <option>BoM</option>
-                        </select>
-                    </div>
+  const handleSave = () => {
+    if (!canCreate) return;
+    if (!validate()) return;
+    const eco = addEco({
+      title: form.title.trim(),
+      ecoType: form.ecoType,
+      productId: form.productId,
+      productName: selectedProduct?.name || "",
+      bomId: form.ecoType === "BoM" ? form.bomId : null,
+      bomName: form.ecoType === "BoM" ? selectedBom?.bomNumber || "" : null,
+      userId: user?.id || "",
+      userName: user?.loginId || "",
+      effectiveDate: form.effectiveDate,
+      versionUpdate: form.versionUpdate,
+    });
+    setSaved(true);
+    navigate(`/ecos/${eco.id}`);
+  };
 
-                    {/* Product */}
-                    <div>
-                        <label className="block mb-1 font-medium">Product *</label>
-                        <select className="w-full border p-2 rounded">
-                            <option>Select Product</option>
-                        </select>
-                    </div>
+  const handleStart = () => {
+    if (!canStart) return;
+    if (!validate()) return;
+    const eco = addEco({
+      title: form.title.trim(),
+      ecoType: form.ecoType,
+      productId: form.productId,
+      productName: selectedProduct?.name || "",
+      bomId: form.ecoType === "BoM" ? form.bomId : null,
+      bomName: form.ecoType === "BoM" ? selectedBom?.bomNumber || "" : null,
+      userId: user?.id || "",
+      userName: user?.loginId || "",
+      effectiveDate: form.effectiveDate,
+      versionUpdate: form.versionUpdate,
+    });
+    setTimeout(() => {
+      navigate(`/ecos/${eco.id}?start=true`);
+    }, 0);
+  };
 
-                    {/* BoM */}
-                    <div>
-                        <label className="block mb-1 font-medium">Bill of Materials *</label>
-                        <select className="w-full border p-2 rounded">
-                            <option>Select BoM</option>
-                        </select>
-                    </div>
+  const inputClass = (field) =>
+    `w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${
+      errors[field]
+        ? "border-danger-500 focus:ring-danger-500/30 bg-danger-500/5"
+        : "border-surface-200 focus:ring-primary-500/30 focus:border-primary-400"
+    } ${isReadOnlyRole ? "bg-surface-50 text-surface-500 cursor-not-allowed" : ""}`;
 
-                    {/* User */}
-                    <div>
-                        <label className="block mb-1 font-medium">User *</label>
-                        <input
-                            type="text"
-                            value="Current User"
-                            readOnly
-                            className="w-full border p-2 rounded bg-gray-100"
-                        />
-                    </div>
+  return (
+    <Layout title="Create ECO">
+      <div className="max-w-2xl mx-auto">
+        {/* RBAC banner for unauthorized users */}
+        {isReadOnlyRole && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Read-only Access</p>
+              <p className="text-xs text-amber-600">Approver role cannot create or edit ECOs. Switch to Engineer or Admin to make changes.</p>
+            </div>
+          </div>
+        )}
 
-                    {/* Effective Date */}
-                    <div>
-                        <label className="block mb-1 font-medium">Effective Date</label>
-                        <input
-                            type="datetime-local"
-                            className="w-full border p-2 rounded"
-                        />
-                    </div>
+        <div className="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
+          {/* Form Header */}
+          <div className="px-6 py-5 border-b border-surface-200 bg-surface-50/50">
+            <h2 className="text-lg font-bold text-surface-900">New Engineering Change Order</h2>
+            <p className="text-sm text-surface-500 mt-1">Fill in the required fields marked with <span className="text-primary-600 font-bold">*</span></p>
+          </div>
 
-                    {/* Version Update */}
-                    <div className="flex items-center gap-2">
-                        <input type="checkbox" />
-                        <label>Version Update</label>
-                    </div>
-
-                    {/* Buttons */}
-                    <div className="flex gap-3">
-                        <button className="bg-blue-500 text-white px-4 py-2 rounded">
-                            Save
-                        </button>
-
-                        <button className="bg-green-500 text-white px-4 py-2 rounded">
-                            Start
-                        </button>
-                    </div>
-
-                </div>
-
+          <div className="p-6 space-y-5">
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-semibold text-surface-700 mb-2">Title *</label>
+              <input
+                id="eco-title"
+                type="text"
+                value={form.title}
+                onChange={(e) => update("title", e.target.value)}
+                placeholder="Enter ECO title"
+                className={inputClass("title")}
+                readOnly={isReadOnlyRole}
+              />
+              {errors.title && <p className="mt-1.5 text-xs text-danger-500">{errors.title}</p>}
             </div>
 
+            {/* ECO Type */}
+            <div>
+              <label className="block text-sm font-semibold text-surface-700 mb-2">ECO Type *</label>
+              <select
+                id="eco-type"
+                value={form.ecoType}
+                onChange={(e) => update("ecoType", e.target.value)}
+                disabled={isReadOnlyRole}
+                className={`w-full px-4 py-3 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 bg-white ${isReadOnlyRole ? "bg-surface-50 text-surface-500 cursor-not-allowed" : ""}`}
+              >
+                <option value="Product">Product</option>
+                <option value="BoM">BoM</option>
+              </select>
+            </div>
+
+            {/* Product */}
+            <div>
+              <label className="block text-sm font-semibold text-surface-700 mb-2">Product *</label>
+              <select
+                id="eco-product"
+                value={form.productId}
+                onChange={(e) => update("productId", e.target.value)}
+                disabled={isReadOnlyRole}
+                className={inputClass("productId")}
+              >
+                <option value="">Select Product</option>
+                {products.filter((p) => p.status === "Active").map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {errors.productId && <p className="mt-1.5 text-xs text-danger-500">{errors.productId}</p>}
+            </div>
+
+            {/* BoM - Only visible when ECO Type = BoM */}
+            {form.ecoType === "BoM" && (
+              <div>
+                <label className="block text-sm font-semibold text-surface-700 mb-2">Bill of Materials *</label>
+                <select
+                  id="eco-bom"
+                  value={form.bomId}
+                  onChange={(e) => update("bomId", e.target.value)}
+                  disabled={isReadOnlyRole}
+                  className={inputClass("bomId")}
+                >
+                  <option value="">Select BoM</option>
+                  {boms.filter((b) => b.status === "Active").map((b) => (
+                    <option key={b.id} value={b.id}>{b.bomNumber} — {b.productName}</option>
+                  ))}
+                </select>
+                {errors.bomId && <p className="mt-1.5 text-xs text-danger-500">{errors.bomId}</p>}
+              </div>
+            )}
+
+            {/* User (auto-filled) */}
+            <div>
+              <label className="block text-sm font-semibold text-surface-700 mb-2">User *</label>
+              <input
+                type="text"
+                value={user?.loginId || ""}
+                readOnly
+                className="w-full px-4 py-3 border border-surface-200 rounded-xl text-sm bg-surface-50 text-surface-500 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Effective Date */}
+            <div>
+              <label className="block text-sm font-semibold text-surface-700 mb-2">Effective Date</label>
+              <input
+                id="eco-date"
+                type="datetime-local"
+                value={form.effectiveDate}
+                onChange={(e) => update("effectiveDate", e.target.value)}
+                readOnly={isReadOnlyRole}
+                className={`w-full px-4 py-3 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 ${isReadOnlyRole ? "bg-surface-50 text-surface-500 cursor-not-allowed" : ""}`}
+              />
+            </div>
+
+            {/* Version Update */}
+            <div className="flex items-center gap-3 py-2">
+              <input
+                id="eco-version-update"
+                type="checkbox"
+                checked={form.versionUpdate}
+                onChange={(e) => update("versionUpdate", e.target.checked)}
+                disabled={isReadOnlyRole}
+                className="w-4 h-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500/30"
+              />
+              <label htmlFor="eco-version-update" className="text-sm font-medium text-surface-700">
+                Version Update
+              </label>
+              <span className="text-xs text-surface-400">(Creates a new version on approval)</span>
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="px-6 py-4 border-t border-surface-200 bg-surface-50/50 flex items-center justify-between">
+            <button
+              onClick={() => navigate("/")}
+              className="px-4 py-2.5 text-sm font-medium text-surface-600 hover:text-surface-800 hover:bg-surface-200 rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <div className="flex gap-3">
+              {/* Save — visible for Engineer & Admin */}
+              {canCreate && (
+                <button
+                  onClick={handleSave}
+                  id="eco-save-button"
+                  className="px-5 py-2.5 text-sm font-semibold bg-white border border-surface-300 text-surface-700 rounded-xl hover:bg-surface-50 transition-colors shadow-sm"
+                >
+                  Save as Draft
+                </button>
+              )}
+              {/* Start — visible for Engineer & Admin only */}
+              {canStart && (
+                <button
+                  onClick={handleStart}
+                  id="eco-start-button"
+                  className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-md shadow-emerald-600/20 hover:shadow-lg hover:shadow-emerald-600/30 transition-all"
+                >
+                  Start →
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-    );
+      </div>
+    </Layout>
+  );
 }
