@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: plm-db
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  app:
+    build: ./backend
+    container_name: plm-backend
+    ports:
+      - "5000:5000"
+    environment:
+      # NOTE: We use 'db' (the service name) instead of 'localhost'
+      DATABASE_URL: "postgresql://postgres:password@db:5432/postgres"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
