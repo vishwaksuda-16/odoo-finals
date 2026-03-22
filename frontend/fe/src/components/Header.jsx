@@ -39,9 +39,9 @@ export default function Header({ title = "Dashboard", onToggleSidebar }) {
             {menuIcon}
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-primary-600/30">
+            {/* <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-primary-600/30">
               PS
-            </div>
+            </div> */}
             <div>
               <p className="text-xs uppercase tracking-wider text-surface-500 font-semibold">PLM Workspace</p>
               <h1 className="text-lg font-bold text-surface-900 tracking-tight">{title}</h1>

@@ -71,9 +71,9 @@ export default function Sidebar({ isOpen, onToggle }) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-surface-800">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg shadow-primary-600/20">
+          {/* <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg shadow-primary-600/20">
             PS
-          </div>
+          </div> */}
           <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "w-auto opacity-100" : "lg:w-0 lg:opacity-0 w-auto opacity-100"}`}>
             <h1 className="text-white font-bold text-lg whitespace-nowrap tracking-tight">PLM Sentry</h1>
             <p className="text-surface-500 text-xs whitespace-nowrap">Engineering Platform</p>
