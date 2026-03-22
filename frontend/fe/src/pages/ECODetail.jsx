@@ -1,9 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import { usePermissions } from "../hooks/usePermissions";
+import {
+  getRulesForEcoProduct,
+  getMyApproverDutyForEco,
+  hasRequiredApprovalConfigured,
+} from "../utils/approvalRules";
 
 const stageColors = {
   Draft: "bg-surface-200 text-surface-700",
@@ -28,7 +33,7 @@ export default function ECODetail() {
   const navigate = useNavigate();
   const { user, canStart, canApprove } = useAuth();
   const { role } = usePermissions();
-  const { ecos, startEco, moveEcoToApproval, approveEco, rejectEco, deleteEco, approvals } = useData();
+  const { ecos, startEco, moveEcoToApproval, approveEco, rejectEco, deleteEco, approvals, stages } = useData();
   const eco = ecos.find((e) => e.id === id);
 
   // Auto-start if redirected from create with ?start=true
@@ -37,6 +42,15 @@ export default function ECODetail() {
       startEco(id);
     }
   }, [searchParams, id]);
+
+  const rulesForThisEco = useMemo(
+    () => (eco ? getRulesForEcoProduct(eco, approvals, stages) : []),
+    [eco, approvals, stages]
+  );
+  const myApprovalDuty = useMemo(
+    () => (eco ? getMyApproverDutyForEco(eco, user?.id, approvals, stages) : []),
+    [eco, user?.id, approvals, stages]
+  );
 
   if (!eco) {
     return (
@@ -55,7 +69,7 @@ export default function ECODetail() {
     );
   }
 
-  const hasApprovalConfig = approvals.some((a) => a.approvalType === "Required");
+  const hasApprovalConfig = hasRequiredApprovalConfigured(eco, approvals, stages);
 
   const handleStart = () => { if (canStart) startEco(id); };
   const handleMoveToApproval = () => { if (canStart) moveEcoToApproval(id); };
@@ -184,6 +198,54 @@ export default function ECODetail() {
         {/* Actions Panel */}
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-surface-200 p-5">
+            <h3 className="font-bold text-surface-900 mb-2">Approvers for this ECO</h3>
+            <p className="text-xs text-surface-500 mb-4">
+              Rules for the <span className="font-semibold text-surface-700">Approval</span> stage and product{" "}
+              <span className="font-semibold text-surface-800">{eco.productName}</span>. Shown to engineers and approvers.
+            </p>
+            {rulesForThisEco.length === 0 ? (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                No approvers configured for this product (or global rules). Add rules under Settings → Approvals.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {rulesForThisEco.map((r) => (
+                  <li
+                    key={r.id}
+                    className={`flex flex-wrap items-center justify-between gap-2 text-sm px-3 py-2.5 rounded-lg border ${
+                      user?.id === r.userId
+                        ? "border-primary-300 bg-primary-50/60"
+                        : "border-surface-100 bg-surface-50"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <span className="font-medium text-surface-900">{r.userName}</span>
+                      <span className="text-surface-500 text-xs block sm:inline sm:ml-2">
+                        Product scope: {r.productName === "All products" ? "All products" : r.productName}
+                      </span>
+                    </div>
+                    <span
+                      className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        r.approvalType === "Required" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {r.approvalType}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {myApprovalDuty.length > 0 && (
+              <p className="mt-3 text-sm text-primary-800 font-medium border-t border-surface-100 pt-3">
+                Your assignment on this ECO:{" "}
+                {myApprovalDuty
+                  .map((d) => `${d.approvalType} — ${d.productName === "All products" ? "all products" : d.productName}`)
+                  .join(" · ")}
+              </p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-surface-200 p-5">
             <h3 className="font-bold text-surface-900 mb-4">Actions</h3>
             <div className="space-y-3">
 
@@ -218,6 +280,11 @@ export default function ECODetail() {
               )}
 
               {/* ➤ Send for Approval — ENGINEER & ADMIN only */}
+              {(eco.stage === "New" || eco.stage === "In Progress") && canStart && !hasApprovalConfig && (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  No <span className="font-semibold">Required</span> approver is configured for this product at the Approval stage. You can still submit; add rules under Settings → Approvals.
+                </p>
+              )}
               {(eco.stage === "New" || eco.stage === "In Progress") && canStart && (
                 <button
                   onClick={handleMoveToApproval}

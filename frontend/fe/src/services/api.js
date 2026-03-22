@@ -68,6 +68,16 @@ const api = {
     approve: (id) => request(`/ecos/${id}/approve`, { method: "PATCH" }),
     reject: (id) => request(`/ecos/${id}/reject`, { method: "PATCH" }),
   },
+  settings: {
+    workflow: () => request("/settings/workflow"),
+    createApprovalRule: (payload) =>
+      request("/settings/approval-rules", { method: "POST", body: JSON.stringify(payload) }),
+    deleteApprovalRule: (id) => request(`/settings/approval-rules/${id}`, { method: "DELETE" }),
+    createStage: (payload) => request("/settings/stages", { method: "POST", body: JSON.stringify(payload) }),
+    updateStage: (id, payload) =>
+      request(`/settings/stages/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+    deleteStage: (id) => request(`/settings/stages/${id}`, { method: "DELETE" }),
+  },
 };
 
 export default api;

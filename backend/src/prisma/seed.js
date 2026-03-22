@@ -133,6 +133,8 @@ async function main() {
 
   await prisma.auditLog.deleteMany({});
   await prisma.passwordResetOtp.deleteMany().catch(() => {});
+  await prisma.ecoApprovalRule.deleteMany({});
+  await prisma.ecoStage.deleteMany({});
   await prisma.eCO.deleteMany({});
   await prisma.boMComponent.deleteMany({});
   await prisma.billOfMaterial.deleteMany({});
@@ -165,6 +167,24 @@ async function main() {
 
   const engineers = [engineerUser, ...extraUsers.filter(u => u.role === 'ENGINEER')];
   const approvers = [approverUser, ...extraUsers.filter(u => u.role === 'APPROVER')];
+
+  /** ECO workflow stages + default approval rule on Approval stage */
+  await prisma.ecoStage.create({
+    data: { name: 'New', sortOrder: 1, pipelineKind: 'NEW' },
+  });
+  const stageApproval = await prisma.ecoStage.create({
+    data: { name: 'Approval', sortOrder: 2, pipelineKind: 'PENDING' },
+  });
+  await prisma.ecoStage.create({
+    data: { name: 'Done', sortOrder: 3, pipelineKind: 'TERMINAL' },
+  });
+  await prisma.ecoApprovalRule.create({
+    data: {
+      stageId: stageApproval.id,
+      userId: approverUser.id,
+      kind: 'Required',
+    },
+  });
 
   /** Products */
   const createdProducts = [];

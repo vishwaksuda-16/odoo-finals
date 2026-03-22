@@ -5,6 +5,7 @@ import DataTable from "../components/DataTable";
 import KanbanCard from "../components/KanbanCard";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
+import { getMyApproverDutyForEco } from "../utils/approvalRules";
 
 const listIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
 const kanbanIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
@@ -24,7 +25,7 @@ const stageBadge = (stage) => {
 };
 
 export default function Dashboard() {
-  const { ecos, products, boms, deleteEco, clearEcos, deleteProduct, clearProducts, deleteBom, clearBoms } = useData();
+  const { ecos, products, boms, deleteEco, clearEcos, deleteProduct, clearProducts, deleteBom, clearBoms, approvals, stages } = useData();
   const { canCreate, isAdmin, users, user, removeUser, clearUsers } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -76,6 +77,26 @@ export default function Dashboard() {
     return `${segment.color} ${start}% ${end}%`;
   }).join(", ");
 
+  const approvalDutyCell = (eco) => {
+    if (eco.stage !== "Approval") {
+      return <span className="text-surface-400 text-xs">—</span>;
+    }
+    const mine = getMyApproverDutyForEco(eco, user?.id, approvals, stages);
+    if (!mine.length) {
+      return <span className="text-surface-400 text-xs">Not on list</span>;
+    }
+    const required = mine.some((m) => m.approvalType === "Required");
+    return (
+      <span
+        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+          required ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+        }`}
+      >
+        {required ? "Required for you" : "Optional for you"}
+      </span>
+    );
+  };
+
   const columns = [
     { key: "title", label: "Name (ECO Title)", render: (val) => <span className="font-medium text-surface-900">{val}</span> },
     { key: "ecoType", label: "ECO Type", render: (val) => (
@@ -84,6 +105,13 @@ export default function Dashboard() {
     { key: "productName", label: "Product" },
     { key: "stage", label: "Stage", render: (val) => stageBadge(val) },
     { key: "status", label: "Status", render: (val) => stageBadge(val) },
+    ...(isApproverLike
+      ? [{
+          key: "approvalDuty",
+          label: "Your approval (product)",
+          render: (_, eco) => approvalDutyCell(eco),
+        }]
+      : []),
   ];
 
   const handleDeleteOne = async (type, id) => {
@@ -290,7 +318,14 @@ export default function Dashboard() {
           {filtered.length === 0 ? (
             <div className="col-span-full text-center py-12 text-surface-500">No ECOs found</div>
           ) : (
-            filtered.map((eco) => (
+            filtered.map((eco) => {
+              const mine = isApproverLike && eco.stage === "Approval"
+                ? getMyApproverDutyForEco(eco, user?.id, approvals, stages)
+                : [];
+              const dutyLabel = mine.length
+                ? (mine.some((m) => m.approvalType === "Required") ? "Required for you" : "Optional for you")
+                : null;
+              return (
               <KanbanCard
                 key={eco.id}
                 title={eco.title}
@@ -298,12 +333,14 @@ export default function Dashboard() {
                 status={eco.stage}
                 fields={[
                   { label: "Product", value: eco.productName },
+                  ...(dutyLabel ? [{ label: "Your approval", value: dutyLabel }] : []),
                   { label: "Status", value: eco.status },
                   { label: "Created", value: eco.createdAt },
                 ]}
                 onClick={() => navigate(`/ecos/${eco.id}`)}
               />
-            ))
+            );
+            })
           )}
         </div>
       )}

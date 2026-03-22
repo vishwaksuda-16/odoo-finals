@@ -4,12 +4,6 @@ import { useAuth } from "./AuthContext";
 
 const DataContext = createContext(null);
 
-const STAGES = [
-  { id: "s1", name: "New", order: 1 },
-  { id: "s2", name: "Approval", order: 2 },
-  { id: "s3", name: "Done", order: 3 },
-];
-
 const toUiStatus = (status) => {
   if (status === "DRAFT") return { stage: "Draft", status: "Draft" };
   if (status === "REJECTED") return { stage: "Draft", status: "Rejected" };
@@ -57,15 +51,19 @@ export function DataProvider({ children }) {
   const [boms, setBoms] = useState([]);
   const [ecos, setEcos] = useState([]);
   const [approvals, setApprovals] = useState([]);
-  const stages = STAGES;
+  const [stages, setStages] = useState([]);
 
   const loadAll = useCallback(async () => {
     try {
-      const [productRows, bomRows, ecoRows] = await Promise.all([
+      const [productRows, bomRows, ecoRows, workflow] = await Promise.all([
         api.products.list(),
         api.boms.list(),
         api.ecos.list(),
+        api.settings.workflow().catch(() => ({ stages: [], rules: [] })),
       ]);
+
+      setStages(workflow?.stages || []);
+      setApprovals(workflow?.rules || []);
 
       setProducts(
         (productRows || []).map((p) => {
@@ -128,6 +126,7 @@ export function DataProvider({ children }) {
       setBoms([]);
       setEcos([]);
       setApprovals([]);
+      setStages([]);
     }
   }, []);
 
@@ -139,6 +138,7 @@ export function DataProvider({ children }) {
       setBoms([]);
       setEcos([]);
       setApprovals([]);
+      setStages([]);
     }
   }, [loadAll, user]);
 
@@ -251,13 +251,37 @@ export function DataProvider({ children }) {
     await loadAll();
   };
 
-  // ── Stages CRUD ──
-  const addStage = () => {};
+  // ── Stages CRUD (admin) ──
+  const addStage = async ({ name, order, pipelineKind }) => {
+    await api.settings.createStage({ name, order, pipelineKind });
+    await loadAll();
+  };
 
-  // ── Approvals CRUD ──
-  const addApproval = () => null;
+  const updateStage = async (id, payload) => {
+    await api.settings.updateStage(id, payload);
+    await loadAll();
+  };
 
-  const removeApproval = () => null;
+  const removeStage = async (id) => {
+    await api.settings.deleteStage(id);
+    await loadAll();
+  };
+
+  // ── Approvals CRUD (admin) ──
+  const addApproval = async ({ userId, approvalType, stageId, productId }) => {
+    await api.settings.createApprovalRule({
+      userId,
+      approvalType,
+      stageId,
+      ...(productId ? { productId } : {}),
+    });
+    await loadAll();
+  };
+
+  const removeApproval = async (id) => {
+    await api.settings.deleteApprovalRule(id);
+    await loadAll();
+  };
 
   return (
     <DataContext.Provider
@@ -265,7 +289,7 @@ export function DataProvider({ children }) {
         products, addProduct, updateProduct, deleteProduct, clearProducts,
         boms, addBom, updateBom, deleteBom, clearBoms,
         ecos, addEco, updateEco, deleteEco, clearEcos, startEco, approveEco, rejectEco, moveEcoToApproval,
-        stages, addStage,
+        stages, addStage, updateStage, removeStage,
         approvals, addApproval, removeApproval,
       }}
     >

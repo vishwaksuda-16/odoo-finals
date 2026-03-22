@@ -8,6 +8,7 @@ const productRoutes = require('./routes/productRoutes');
 const ecoRoutes = require('./routes/ecoRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const bomRoutes = require('./routes/bomRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/ecos', ecoRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/boms', bomRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 404 Handler
 app.use((req, res) => {

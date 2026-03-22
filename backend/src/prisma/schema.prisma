@@ -20,6 +20,38 @@ model User {
   ecos ECO[]      @relation("UserToECO")
   logs AuditLog[]
   passwordResetOtps PasswordResetOtp[]
+  ecoApprovalRules EcoApprovalRule[]
+}
+
+enum EcoPipelineKind {
+  NONE
+  DRAFT_SET
+  NEW
+  PENDING
+  TERMINAL
+}
+
+model EcoStage {
+  id           String            @id @default(uuid())
+  name         String
+  sortOrder    Int
+  pipelineKind EcoPipelineKind   @default(NONE)
+  createdAt    DateTime          @default(now())
+  approvalRules EcoApprovalRule[]
+}
+
+model EcoApprovalRule {
+  id        String   @id @default(uuid())
+  stageId   String
+  stage     EcoStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  scopeKey  String   @default("GLOBAL")
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, userId, scopeKey])
 }
 
 model PasswordResetOtp {
@@ -42,13 +74,14 @@ enum Role {
 // --- PRODUCT & VERSIONING ---
 
 model Product {
-  id        String           @id @default(uuid())
-  sku       String           @unique
-  name      String
-  versions  ProductVersion[]
-  boms      BillOfMaterial[]
-  ecos      ECO[]
-  createdAt DateTime         @default(now())
+  id                String            @id @default(uuid())
+  sku               String            @unique
+  name              String
+  versions          ProductVersion[]
+  boms              BillOfMaterial[]
+  ecos              ECO[]
+  ecoApprovalRules  EcoApprovalRule[]
+  createdAt         DateTime          @default(now())
 }
 
 model ProductVersion {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
@@ -25,10 +25,56 @@ export default function ECOCreate() {
   const [componentDraft, setComponentDraft] = useState({ componentName: "", quantity: "" });
   const [componentChanges, setComponentChanges] = useState([]);
   const [errors, setErrors] = useState({});
-  const [saved, setSaved] = useState(false);
+  const lastAutoKeyRef = useRef("");
+
+  const bomsForProduct = (productId) =>
+    boms
+      .filter((b) => b.status === "Active" && b.finishedProduct === productId)
+      .sort((a, b) => (Number(b.version) || 0) - (Number(a.version) || 0));
+
+  const componentsFromBom = (bom) =>
+    (bom?.components || [])
+      .map((c) => {
+        const qty = Number(c.quantity) || 0;
+        const name = (c.name || c.componentName || "").trim();
+        return { componentName: name, quantity: qty, oldQuantity: qty };
+      })
+      .filter((c) => c.componentName && c.quantity > 0);
+
+  useEffect(() => {
+    if (form.ecoType !== "BoM") {
+      lastAutoKeyRef.current = "";
+      return;
+    }
+    if (!form.productId) {
+      lastAutoKeyRef.current = "";
+      setForm((p) => ({ ...p, bomId: "" }));
+      setComponentChanges([]);
+      return;
+    }
+    const syncKey = `BoM|${form.productId}`;
+    const candidates = bomsForProduct(form.productId);
+    const bom = candidates[0];
+    if (!bom) {
+      setForm((p) => ({ ...p, bomId: "" }));
+      if (lastAutoKeyRef.current !== syncKey) setComponentChanges([]);
+      lastAutoKeyRef.current = syncKey;
+      return;
+    }
+    const shouldFill = lastAutoKeyRef.current !== syncKey || !form.bomId;
+    lastAutoKeyRef.current = syncKey;
+    if (shouldFill) {
+      setForm((p) => ({ ...p, bomId: bom.id }));
+      setComponentChanges(componentsFromBom(bom));
+      setErrors((e) => ({ ...e, bomId: "", proposedChanges: "" }));
+    }
+  }, [form.ecoType, form.productId, form.bomId, boms]);
 
   const update = (field, value) => {
     if (isReadOnlyRole) return; // Block edits for unauthorized role
+    if (field === "ecoType" && value !== "BoM") {
+      setComponentChanges([]);
+    }
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === "ecoType" && value !== "BoM") {
@@ -47,8 +93,13 @@ export default function ECOCreate() {
     if (form.ecoType === "Product" && !form.newSalePrice && !form.newCostPrice) {
       errs.proposedChanges = "Set at least one product attribute change";
     }
-    if (form.ecoType === "BoM" && componentChanges.length === 0) {
-      errs.proposedChanges = "Add at least one component change";
+    if (form.ecoType === "BoM") {
+      const validLines = componentChanges.filter(
+        (c) => String(c.componentName || "").trim() && Number(c.quantity) > 0
+      );
+      if (validLines.length === 0) {
+        errs.proposedChanges = "Add at least one component line with a name and quantity";
+      }
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -70,10 +121,37 @@ export default function ECOCreate() {
     setComponentChanges((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const updateComponentChange = (index, field, value) => {
+    setComponentChanges((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
+    );
+    setErrors((e) => ({ ...e, proposedChanges: "" }));
+  };
+
+  const handleBomSelect = (bomId) => {
+    update("bomId", bomId);
+    const bom = boms.find((b) => b.id === bomId);
+    if (bom) {
+      setComponentChanges(componentsFromBom(bom));
+      setErrors((e) => ({ ...e, proposedChanges: "" }));
+    } else {
+      setComponentChanges([]);
+    }
+  };
+
   const buildProposedChanges = () => {
     if (form.ecoType === "BoM") {
       return {
-        components: componentChanges.map((c) => ({ componentName: c.componentName, quantity: c.quantity })),
+        components: componentChanges
+          .filter((c) => String(c.componentName || "").trim() && Number(c.quantity) > 0)
+          .map((c) => {
+            const line = {
+              componentName: String(c.componentName || "").trim(),
+              quantity: Number(c.quantity),
+            };
+            if (c.oldQuantity != null) line.oldQuantity = Number(c.oldQuantity);
+            return line;
+          }),
       };
     }
     const payload = {};
@@ -104,7 +182,6 @@ export default function ECOCreate() {
       versionUpdate: form.versionUpdate,
       proposedChanges: buildProposedChanges(),
     });
-    setSaved(true);
     navigate(`/ecos/${eco.id}`);
   };
 
@@ -213,15 +290,21 @@ export default function ECOCreate() {
                 <select
                   id="eco-bom"
                   value={form.bomId}
-                  onChange={(e) => update("bomId", e.target.value)}
+                  onChange={(e) => handleBomSelect(e.target.value)}
                   disabled={isReadOnlyRole}
                   className={inputClass("bomId")}
                 >
                   <option value="">Select BoM</option>
-                  {boms.filter((b) => b.status === "Active").map((b) => (
-                    <option key={b.id} value={b.id}>{b.bomNumber} — {b.productName}</option>
+                  {(form.productId ? bomsForProduct(form.productId) : boms.filter((b) => b.status === "Active")).map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.bomNumber} — {b.productName}
+                      {typeof b.version !== "undefined" ? ` (v${b.version})` : ""}
+                    </option>
                   ))}
                 </select>
+                <p className="mt-1.5 text-xs text-surface-500">
+                  Choosing a product loads the latest active BoM and its lines. Pick another BoM above to switch the baseline, or edit quantities below.
+                </p>
                 {errors.bomId && <p className="mt-1.5 text-xs text-danger-500">{errors.bomId}</p>}
               </div>
             )}
@@ -257,13 +340,16 @@ export default function ECOCreate() {
 
             {form.ecoType === "BoM" && (
               <div>
-                <label className="block text-sm font-semibold text-surface-700 mb-2">Component Changes</label>
+                <label className="block text-sm font-semibold text-surface-700 mb-2">Component lines</label>
+                <p className="text-xs text-surface-500 mb-3">
+                  Loaded from the selected BoM. Adjust quantities, rename lines, remove rows, or add new components.
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <input
                     type="text"
                     value={componentDraft.componentName}
                     onChange={(e) => setComponentDraft((prev) => ({ ...prev, componentName: e.target.value }))}
-                    placeholder="Component"
+                    placeholder="New component name"
                     disabled={isReadOnlyRole}
                     className="sm:col-span-2 w-full px-4 py-3 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
                   />
@@ -290,13 +376,42 @@ export default function ECOCreate() {
                 {componentChanges.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {componentChanges.map((c, idx) => (
-                      <div key={`${c.componentName}-${idx}`} className="flex items-center justify-between bg-surface-50 border border-surface-200 px-3 py-2 rounded-lg">
-                        <p className="text-sm text-surface-700">{c.componentName} - Qty {c.quantity}</p>
-                        {!isReadOnlyRole && (
-                          <button type="button" onClick={() => removeComponentChange(idx)} className="text-xs text-danger-600 hover:text-danger-700">
-                            Remove
-                          </button>
-                        )}
+                      <div
+                        key={`row-${idx}`}
+                        className="flex flex-col sm:flex-row sm:items-center gap-2 bg-surface-50 border border-surface-200 px-3 py-2 rounded-lg"
+                      >
+                        <input
+                          type="text"
+                          value={c.componentName}
+                          onChange={(e) => updateComponentChange(idx, "componentName", e.target.value)}
+                          disabled={isReadOnlyRole}
+                          className="flex-1 min-w-0 px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white"
+                          aria-label={`Component ${idx + 1} name`}
+                        />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-surface-500 hidden sm:inline">Qty</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={c.quantity === "" ? "" : c.quantity}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              updateComponentChange(idx, "quantity", v === "" ? "" : parseInt(v, 10) || 0);
+                            }}
+                            disabled={isReadOnlyRole}
+                            className="w-20 px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white"
+                            aria-label={`Component ${idx + 1} quantity`}
+                          />
+                          {!isReadOnlyRole && (
+                            <button
+                              type="button"
+                              onClick={() => removeComponentChange(idx)}
+                              className="text-xs text-danger-600 hover:text-danger-700 px-2 py-1"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
