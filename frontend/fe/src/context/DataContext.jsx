@@ -95,13 +95,15 @@ export function DataProvider({ children }) {
 
       setProducts(
         (productRows || []).map((p) => {
-          const active = (p.versions || []).find((v) => v.status === "ACTIVE");
+          const active = (p.versions || []).find((v) => v.status === "ACTIVE") || (p.versions || [])[0];
           return {
             id: p.id,
+            sku: p.sku,
             name: p.name,
+            archived: !!p.archived,
             salesPrice: active?.salePrice || 0,
             costPrice: active?.costPrice || 0,
-            status: active?.status === "ACTIVE" ? "Active" : "Archived",
+            status: p.archived ? "Archived" : (active?.status === "ACTIVE" ? "Active" : "Archived"),
             version: active?.versionNumber || 1,
             attachments: [],
             createdAt: p.createdAt,
@@ -245,6 +247,16 @@ export function DataProvider({ children }) {
     await loadAll();
   };
 
+  const archiveProduct = async (id) => {
+    await api.products.archive(id);
+    await loadAll();
+  };
+
+  const unarchiveProduct = async (id) => {
+    await api.products.unarchive(id);
+    await loadAll();
+  };
+
   const clearProducts = async () => {
     await api.products.clear();
     await loadAll();
@@ -314,7 +326,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider
       value={{
-        products, addProduct, updateProduct, deleteProduct, clearProducts,
+        products, addProduct, updateProduct, deleteProduct, archiveProduct, unarchiveProduct, clearProducts,
         boms, addBom, updateBom, deleteBom, clearBoms,
         ecos, addEco, updateEco, deleteEco, clearEcos, startEco, approveEco, rejectEco, moveEcoToApproval,
         stages, addStage, updateStage, removeStage,

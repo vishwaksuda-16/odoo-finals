@@ -33,6 +33,21 @@ const register = async (req, res) => {
       }
     });
 
+    // Send login credentials to user's email
+    const mailConfigured = !!(process.env.MAIL_USER && process.env.MAIL_PASS);
+    if (mailConfigured) {
+      try {
+        await sendNotification(
+          user.email,
+          'PLM Sentry — Your Account Credentials',
+          `Your PLM Sentry account has been created.\n\nEmail (Login ID): ${user.email}\nPassword: ${password}\n\nSign in at your application URL. Please change your password after first login for security.`,
+          `<h2>Welcome to PLM Sentry</h2><p>Your account has been created. Use these credentials to sign in:</p><p><b>Email (Login ID):</b> ${user.email}</p><p><b>Password:</b> ${password}</p><p style="margin-top:16px;color:#64748b;font-size:13px">Please change your password after your first login for security.</p>`
+        );
+      } catch (err) {
+        console.error('Welcome email failed:', err.message);
+      }
+    }
+
     res.status(201).json({ message: "User created successfully", userId: user.id });
   } catch (error) {
     res.status(500).json({ error: error.message });

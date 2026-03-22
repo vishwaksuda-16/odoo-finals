@@ -14,15 +14,17 @@ import ChangeView from "./pages/ChangeView";
 import Products from "./pages/Products";
 import ProductCreate from "./pages/ProductCreate";
 import ProductDetail from "./pages/ProductDetail";
+import ArchivedProducts from "./pages/ArchivedProducts";
 import BOM from "./pages/BOM";
 import BOMCreate from "./pages/BOMCreate";
 import BOMDetail from "./pages/BOMDetail";
 import Reporting from "./pages/Reporting";
-import ApproverWorkspace from "./pages/ApproverWorkspace";
+// import ApproverWorkspace from "./pages/ApproverWorkspace";
 import Settings from "./pages/Settings";
 import ECOStages from "./pages/ECOStages";
 import Approvals from "./pages/Approvals";
 import CreateUser from "./pages/CreateUser";
+import AdminData from "./pages/AdminData";
 import ForgotPassword from "./pages/ForgotPassword";
 
 function ProtectedRoute({ children }) {
@@ -77,7 +79,7 @@ function AppRoutes() {
 
       {/* Protected Routes */}
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/approver" element={<RoleRoute allow={["ADMIN", "APPROVER"]}><ApproverWorkspace /></RoleRoute>} />
+  
       <Route path="/ecos" element={<ProtectedRoute><ECOList /></ProtectedRoute>} />
       <Route path="/ecos/create" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ECOCreate /></RoleRoute>} />
       <Route path="/ecos/:id/edit" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ECOEdit /></RoleRoute>} />
@@ -85,6 +87,7 @@ function AppRoutes() {
       <Route path="/changes/:id" element={<ProtectedRoute><ChangeView /></ProtectedRoute>} />
 
       <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+      <Route path="/products/archived" element={<ProtectedRoute><ArchivedProducts /></ProtectedRoute>} />
       <Route path="/products/create" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ProductCreate /></RoleRoute>} />
       <Route path="/products/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
 
@@ -100,6 +103,7 @@ function AppRoutes() {
 
       {/* Admin-Only Routes */}
       <Route path="/settings/users" element={<AdminRoute><CreateUser /></AdminRoute>} />
+      <Route path="/admin/data" element={<AdminRoute><AdminData /></AdminRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

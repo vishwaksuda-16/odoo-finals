@@ -4,9 +4,12 @@ const prisma = new PrismaClient();
 const getAllActiveProducts = async (req, res) => {
   try {
     const products = await prisma.product.findMany({
+      where: { archived: false },
       include: {
         versions: {
-          where: { status: 'ACTIVE' }
+          where: { status: 'ACTIVE' },
+          orderBy: { versionNumber: 'desc' },
+          take: 1
         }
       }
     });
@@ -16,7 +19,42 @@ const getAllActiveProducts = async (req, res) => {
   }
 };
 
-// ADD THIS FUNCTION
+const getArchivedProducts = async (req, res) => {
+  try {
+    const products = await prisma.product.findMany({
+      where: { archived: true },
+      include: {
+        versions: {
+          orderBy: { versionNumber: 'desc' }
+        }
+      }
+    });
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getProductById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        versions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { versionNumber: 'desc' },
+          take: 1
+        }
+      }
+    });
+    if (!product) return res.status(404).json({ error: "Product not found" });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const getProductHistory = async (req, res) => {
   const { id } = req.params;
   try {
@@ -104,4 +142,40 @@ const deleteAllProducts = async (req, res) => {
   }
 };
 
-module.exports = { getAllActiveProducts, getProductHistory, createProduct, deleteProduct, deleteAllProducts };
+const archiveProduct = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.product.update({
+      where: { id },
+      data: { archived: true }
+    });
+    res.json({ message: "Product archived" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const unarchiveProduct = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.product.update({
+      where: { id },
+      data: { archived: false }
+    });
+    res.json({ message: "Product unarchived" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = {
+  getAllActiveProducts,
+  getArchivedProducts,
+  getProductById,
+  getProductHistory,
+  createProduct,
+  deleteProduct,
+  deleteAllProducts,
+  archiveProduct,
+  unarchiveProduct
+};

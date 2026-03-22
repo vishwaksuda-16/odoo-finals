@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 const COMPANY_DOMAIN = "@gmail.com";
 
 export default function CreateUser() {
-  const { signup, editUser, isAdmin, users, user } = useAuth();
+  const { signup, editUser, removeUser, isAdmin, users, user } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -329,6 +329,24 @@ export default function CreateUser() {
                     title={u.id === user?.id ? "Use profile flow for your own account" : "Edit user"}
                   >
                     Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm(`Delete user "${u.name || u.email}"? This cannot be undone.`)) {
+                        try {
+                          await removeUser(u.id);
+                          setSuccess(`User deleted`);
+                        } catch (err) {
+                          setErrors({ loginId: err.message || "Failed to delete user" });
+                        }
+                      }
+                    }}
+                    disabled={u.id === user?.id}
+                    className="px-3 py-1 text-xs font-semibold rounded-lg border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={u.id === user?.id ? "Cannot delete your own account" : "Delete user"}
+                  >
+                    Delete
                   </button>
                 </div>
               </div>

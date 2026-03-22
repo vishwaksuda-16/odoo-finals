@@ -1,13 +1,47 @@
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useData } from "../context/DataContext";
+import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products } = useData();
+  const { products, deleteProduct, archiveProduct, unarchiveProduct } = useData();
+  const { canCreate, isAdmin } = useAuth();
+  const [product, setProduct] = useState(products.find((p) => p.id === id));
+  const [productHistory, setProductHistory] = useState(null);
 
-  const product = products.find((p) => p.id === id);
+  useEffect(() => {
+    if (product) {
+      api.products.history(id)
+        .then((h) => setProductHistory(h))
+        .catch(() => setProductHistory(null));
+    }
+  }, [id, product]);
+
+  useEffect(() => {
+    const p = products.find((x) => x.id === id);
+    if (p) setProduct(p);
+    else {
+      api.products.getById(id)
+        .then((raw) => {
+          const active = (raw.versions || []).find((v) => v.status === "ACTIVE") || (raw.versions || [])[0];
+          setProduct({
+            id: raw.id,
+            name: raw.name,
+            salesPrice: active?.salePrice || 0,
+            costPrice: active?.costPrice || 0,
+            version: active?.versionNumber || 1,
+            status: raw.archived ? "Archived" : "Active",
+            archived: raw.archived,
+            createdAt: raw.createdAt,
+          });
+        })
+        .catch(() => setProduct(null));
+    }
+  }, [id, products]);
 
   if (!product) {
     return (
@@ -37,11 +71,45 @@ export default function ProductDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-surface-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-surface-200 bg-surface-50/50 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-surface-200 bg-surface-50/50 flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-bold text-surface-900">Product Details</h3>
-            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-              product.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-surface-200 text-surface-600"
-            }`}>{product.status}</span>
+            <div className="flex items-center gap-2">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                product.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-surface-200 text-surface-600"
+              }`}>{product.status}</span>
+              {(canCreate || isAdmin) && (
+                <>
+                  {product.archived ? (
+                    <button
+                      onClick={async () => { await unarchiveProduct?.(id); navigate("/products"); }}
+                      className="px-3 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-200"
+                    >
+                      Unarchive
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => { await archiveProduct?.(id); navigate("/products"); }}
+                      className="px-3 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded-lg border border-amber-200"
+                    >
+                      Archive
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={async () => {
+                        if (window.confirm("Permanently delete this product?")) {
+                          await deleteProduct?.(id);
+                          navigate("/products");
+                        }
+                      }}
+                      className="px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
           <div className="p-6 grid grid-cols-2 gap-5">
             {[
@@ -79,6 +147,37 @@ export default function ProductDetail() {
             )}
           </div>
         </div>
+
+        {productHistory?.versions?.filter((v) => v.status === "ARCHIVED").length > 0 && (
+          <div className="lg:col-span-2 bg-white rounded-xl border border-surface-200 overflow-hidden mt-6">
+            <div className="px-6 py-4 border-b border-surface-200 bg-surface-50/50">
+              <h3 className="font-bold text-surface-900">Archived Versions</h3>
+              <p className="text-sm text-surface-500 mt-1">Previous product versions (replaced on ECO approval)</p>
+            </div>
+            <div className="p-6 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-surface-200">
+                    <th className="text-left py-2 font-semibold text-surface-700">Version</th>
+                    <th className="text-left py-2 font-semibold text-surface-700">Sale Price</th>
+                    <th className="text-left py-2 font-semibold text-surface-700">Cost Price</th>
+                    <th className="text-left py-2 font-semibold text-surface-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productHistory.versions.filter((v) => v.status === "ARCHIVED").map((v) => (
+                    <tr key={v.id} className="border-b border-surface-100">
+                      <td className="py-2 font-medium">v{v.versionNumber}</td>
+                      <td className="py-2">${v.salePrice?.toFixed(2)}</td>
+                      <td className="py-2">${v.costPrice?.toFixed(2)}</td>
+                      <td className="py-2"><span className="px-2 py-0.5 rounded text-xs bg-surface-200 text-surface-600">Archived</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

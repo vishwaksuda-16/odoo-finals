@@ -16,6 +16,7 @@ const icons = {
   masterData: <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>,
   reporting: <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>,
   settings: <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>,
+  adminData: <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
 };
 
 const navLinkClass = ({ isActive }) =>
@@ -39,10 +40,10 @@ export default function Sidebar({ isOpen, onToggle }) {
     canSeeProducts,
     canSeeBom,
     canSeeReporting,
-    canSeeApproverWorkspace,
     canEditStagesSettings,
     canEditApprovalsSettings,
     canManageUsers,
+    isAdmin,
   } = usePermissions();
 
   const toggleMenu = (menu) => {
@@ -88,12 +89,20 @@ export default function Sidebar({ isOpen, onToggle }) {
             <span className={`transition-all duration-300 ${isOpen ? "opacity-100" : "lg:hidden"}`}>Dashboard</span>
           </NavLink>
 
-          {canSeeApproverWorkspace && (
+          {/* Admin Quick Data */}
+          {isAdmin && (
+            <NavLink to="/admin/data" className={navLinkClass}>
+              {icons.adminData}
+              <span className={`transition-all duration-300 ${isOpen ? "opacity-100" : "lg:hidden"}`}>Admin Data</span>
+            </NavLink>
+          )}
+
+          {/* {canSeeApproverWorkspace && (
             <NavLink to="/approver" className={navLinkClass}>
               {icons.approver}
               <span className={`transition-all duration-300 ${isOpen ? "opacity-100" : "lg:hidden"}`}>Approver</span>
             </NavLink>
-          )}
+          )} */}
 
           {/* Master Data */}
           {(canSeeProducts || canSeeBom) && (
@@ -115,9 +124,10 @@ export default function Sidebar({ isOpen, onToggle }) {
               </span>
             </button>
             <div className={`overflow-hidden transition-all duration-300 ${
-              expandedMenu === "masterData" || isMasterDataActive ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"
+              expandedMenu === "masterData" || isMasterDataActive ? "max-h-52 opacity-100 mt-1" : "max-h-0 opacity-0"
             }`}>
               {canSeeProducts && <NavLink to="/products" className={subLinkClass}>Products</NavLink>}
+              {canSeeProducts && <NavLink to="/products/archived" className={subLinkClass}>Archived Products</NavLink>}
               {canSeeBom && <NavLink to="/bom" className={subLinkClass}>Bills of Materials</NavLink>}
             </div>
           </div>

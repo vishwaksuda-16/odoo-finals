@@ -46,9 +46,18 @@ const api = {
   },
   products: {
     list: () => request("/products"),
+    listArchived: () => request("/products/archived"),
+    getById: (id) => request(`/products/${id}`),
+    history: (id) => request(`/products/${id}/history`),
     create: (payload) => request("/products", { method: "POST", body: JSON.stringify(payload) }),
     remove: (id) => request(`/products/${id}`, { method: "DELETE" }),
+    archive: (id) => request(`/products/${id}/archive`, { method: "PATCH" }),
+    unarchive: (id) => request(`/products/${id}/unarchive`, { method: "PATCH" }),
     clear: () => request("/products", { method: "DELETE" }),
+  },
+  reports: {
+    audit: () => request("/reports/audit"),
+    approverStats: () => request("/reports/approver-stats"),
   },
   boms: {
     list: () => request("/boms"),

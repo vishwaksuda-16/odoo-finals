@@ -7,8 +7,8 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 
 export default function Products() {
-  const { products } = useData();
-  const { canCreate } = useAuth();
+  const { products, deleteProduct, archiveProduct } = useData();
+  const { canCreate, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [view, setView] = useState("list");
@@ -34,6 +34,33 @@ export default function Products() {
       ),
     },
     { key: "salesPrice", label: "Sales Price", render: (val) => `$${val?.toFixed(2) || "0.00"}` },
+    ...((canCreate || isAdmin) ? [{
+      key: "id",
+      label: "Actions",
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {canCreate && (
+            <button
+              onClick={(e) => { e.stopPropagation(); archiveProduct(row.id); }}
+              className="px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded-lg"
+            >
+              Archive
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (window.confirm("Permanently delete this product?")) await deleteProduct(row.id);
+              }}
+              className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      ),
+    }] : []),
   ];
 
   return (

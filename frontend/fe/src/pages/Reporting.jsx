@@ -1,11 +1,20 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import DataTable from "../components/DataTable";
 import { useData } from "../context/DataContext";
+import api from "../services/api";
 
 export default function Reporting() {
   const { ecos } = useData();
   const navigate = useNavigate();
+  const [approverStats, setApproverStats] = useState({ approvers: [], totals: { approved: 0, rejected: 0 } });
+
+  useEffect(() => {
+    api.reports.approverStats()
+      .then((data) => setApproverStats(data))
+      .catch(() => setApproverStats({ approvers: [], totals: { approved: 0, rejected: 0 } }));
+  }, []);
 
   const columns = [
     { key: "title", label: "ECO Title", render: (val) => <span className="font-medium text-surface-900">{val}</span> },
@@ -52,6 +61,50 @@ export default function Reporting() {
       <div className="mb-6">
         <p className="text-surface-500 text-sm">View all Engineering Change Orders and their associated changes.</p>
       </div>
+
+      {approverStats.approvers.length > 0 && (
+        <div className="mb-6 bg-white rounded-xl border border-surface-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-surface-200 bg-surface-50/50">
+            <h3 className="font-bold text-surface-900">Approver Statistics</h3>
+            <p className="text-sm text-surface-500 mt-1">Approved and rejected counts by approver</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+              <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+                <p className="text-xs font-semibold text-emerald-600 uppercase">Total Approved</p>
+                <p className="text-2xl font-bold text-emerald-700">{approverStats.totals.approved}</p>
+              </div>
+              <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                <p className="text-xs font-semibold text-red-600 uppercase">Total Rejected</p>
+                <p className="text-2xl font-bold text-red-700">{approverStats.totals.rejected}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-surface-200">
+                    <th className="text-left py-2 font-semibold text-surface-700">Approver</th>
+                    <th className="text-left py-2 font-semibold text-surface-700">Email</th>
+                    <th className="text-right py-2 font-semibold text-emerald-700">Approved</th>
+                    <th className="text-right py-2 font-semibold text-red-700">Rejected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {approverStats.approvers.map((a) => (
+                    <tr key={a.userId} className="border-b border-surface-100 hover:bg-surface-50">
+                      <td className="py-2">{a.name}</td>
+                      <td className="py-2 text-surface-500">{a.email}</td>
+                      <td className="py-2 text-right font-medium text-emerald-600">{a.approved}</td>
+                      <td className="py-2 text-right font-medium text-red-600">{a.rejected}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         data={ecos}
