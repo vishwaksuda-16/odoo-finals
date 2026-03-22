@@ -3,6 +3,7 @@ export default function DiffView({ title, bomChanges = [], productChanges = [], 
     if (operation === "Added") return "bg-emerald-50 border-l-4 border-l-emerald-500";
     if (operation === "Removed") return "bg-red-50 border-l-4 border-l-red-500";
     if (operation === "Modified") return "bg-amber-50 border-l-4 border-l-amber-400";
+    if (operation === "Unmodified" || operation === "Unchanged") return "bg-surface-50/80 border-l-4 border-l-surface-200";
     return "";
   };
 
@@ -11,10 +12,11 @@ export default function DiffView({ title, bomChanges = [], productChanges = [], 
       Added: "bg-emerald-100 text-emerald-700",
       Removed: "bg-red-100 text-red-700",
       Modified: "bg-amber-100 text-amber-700",
+      Unmodified: "bg-surface-100 text-surface-600",
       Unchanged: "bg-surface-100 text-surface-600",
     };
     return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${map[operation] || map.Unchanged}`}>
+      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${map[operation] || map.Unmodified}`}>
         {operation}
       </span>
     );
@@ -80,14 +82,17 @@ export default function DiffView({ title, bomChanges = [], productChanges = [], 
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
-              {productChanges.map((c, i) => (
+              {productChanges.map((c, i) => {
+                const unmodified = c.status === "Unmodified" || c.status === "Unchanged";
+                return (
                 <tr key={i} className={getRowColor(c.status)}>
                   <td className="px-5 py-3.5 text-sm font-medium text-surface-800">{c.field}</td>
-                  <td className="px-5 py-3.5 text-sm text-red-600 line-through">{c.oldValue}</td>
-                  <td className="px-5 py-3.5 text-sm font-semibold text-emerald-700">{c.newValue}</td>
+                  <td className={`px-5 py-3.5 text-sm ${unmodified ? "text-surface-600" : "text-red-600 line-through"}`}>{c.oldValue}</td>
+                  <td className={`px-5 py-3.5 text-sm ${unmodified ? "text-surface-800 font-medium" : "font-semibold text-emerald-700"}`}>{c.newValue}</td>
                   <td className="px-5 py-3.5">{getBadge(c.status)}</td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>

@@ -13,33 +13,61 @@ const toUiStatus = (status) => {
   return { stage: "Draft", status: "Draft" };
 };
 
+const numOrNull = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const bomLineOperation = (c) => {
+  const newQty = numOrNull(c.quantity ?? c.qty);
+  const oldQty = numOrNull(c.oldQuantity);
+  if (oldQty === null && newQty !== null) return "Added";
+  if (oldQty !== null && newQty === null) return "Removed";
+  if (oldQty !== null && newQty !== null) {
+    if (oldQty === newQty) return "Unmodified";
+    return "Modified";
+  }
+  return "Modified";
+};
+
+const valuesEqual = (a, b) => numOrNull(a) === numOrNull(b);
+
 const toEcoChanges = (eco) => {
   const changes = eco?.proposedChanges || {};
   if (eco?.type === "BOM") {
-    const bomRows = (changes.components || []).map((c) => ({
-      component: c.componentName || c.name || "",
-      oldQty: c.oldQuantity ?? "-",
-      newQty: c.quantity ?? c.qty ?? "-",
-      operation: "Modified",
-    }));
+    const bomRows = (changes.components || []).map((c) => {
+      const oldQ = c.oldQuantity;
+      const newQ = c.quantity ?? c.qty;
+      return {
+        component: c.componentName || c.name || "",
+        oldQty: oldQ != null && oldQ !== "" ? oldQ : "—",
+        newQty: newQ != null && newQ !== "" ? newQ : "—",
+        operation: bomLineOperation(c),
+      };
+    });
     return { product: [], bom: bomRows };
   }
 
   const productRows = [];
   if (typeof changes.salePrice !== "undefined") {
+    const oldV = changes.oldSalePrice;
+    const newV = changes.salePrice;
     productRows.push({
       field: "Sale Price",
-      oldValue: changes.oldSalePrice ?? "-",
-      newValue: changes.salePrice,
-      status: "Modified",
+      oldValue: oldV ?? "—",
+      newValue: newV,
+      status: valuesEqual(oldV, newV) ? "Unmodified" : "Modified",
     });
   }
   if (typeof changes.costPrice !== "undefined") {
+    const oldV = changes.oldCostPrice;
+    const newV = changes.costPrice;
     productRows.push({
       field: "Cost Price",
-      oldValue: changes.oldCostPrice ?? "-",
-      newValue: changes.costPrice,
-      status: "Modified",
+      oldValue: oldV ?? "—",
+      newValue: newV,
+      status: valuesEqual(oldV, newV) ? "Unmodified" : "Modified",
     });
   }
   return { product: productRows, bom: [] };
