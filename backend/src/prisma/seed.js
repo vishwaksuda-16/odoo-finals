@@ -8,18 +8,18 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const statusPool = ['DRAFT', 'NEW', 'PENDING', 'APPROVED', 'REJECTED'];
 
-/** Seeded accounts (MANDATORY) */
+/** Mandatory Users */
 const ACCOUNTS = {
   admin: {
     email: 'vishwaksuda@gmail.com',
     password: 'Admin@123',
-    name: 'Vishwak ',
+    name: 'Vishwak',
     role: 'ADMIN'
   },
   approver: {
     email: 'sudharshankrishnaalk@gmail.com',
     password: 'Sudha@123',
-    name: 'Sudharshan Krishnaa',
+    name: 'Sudharshan Krishna',
     role: 'APPROVER'
   },
   engineer: {
@@ -30,7 +30,7 @@ const ACCOUNTS = {
   }
 };
 
-/** Random Indian users */
+/** Indian Users */
 const indianFirstNames = [
   'Aarav','Vivaan','Aditya','Arjun','Reyansh','Sai','Krishna','Rohan','Karthik','Rahul',
   'Ananya','Diya','Priya','Sneha','Aishwarya','Pooja','Neha','Kavya','Meera','Ishita'
@@ -52,27 +52,56 @@ function generateIndianUser(index) {
   };
 }
 
-/** Product + BOM data */
-const productNames = [
-  'Mumbai Masala Kitchen Line','Delhi Gold Basmati Premium','Bengal Darjeeling Tea Select',
-  'Chennai Filter Coffee Roast','Hyderabad Biryani Spice Kit','Punjab Amritsari Kulcha Mix',
-  'Kerala Coconut Oil Pure','Goa Cashew Feni Blend','Jaipur Blue Pottery Glaze',
-  'Kolkata Rosogolla Syrup Base','Ahmedabad Dhokla Steamer Pro','Lucknow Kebab Marinade',
-  'Indore Poha Snack Line','Coorg Coffee Estate Reserve','Nashik Wine Grape Crush',
-  'Surat Zari Thread Gold','Varanasi Silk Dye Pack','Shimla Apple Cider Base',
-  'Madurai Jigarthanda Syrup','Udupi Sambar Powder Mill'
+/** Products with category */
+const products = [
+  { name: 'Wooden Office Chair', category: 'FURNITURE' },
+  { name: 'Ergonomic Mesh Chair', category: 'FURNITURE' },
+  { name: 'Dining Table 6 Seater', category: 'FURNITURE' },
+
+  { name: 'LED Smart TV 42 inch', category: 'ELECTRONICS' },
+  { name: 'LED Smart TV 55 inch', category: 'ELECTRONICS' },
+  { name: 'Bluetooth Speaker', category: 'ELECTRONICS' },
+
+  { name: 'Washing Machine', category: 'APPLIANCE' },
+  { name: 'Refrigerator', category: 'APPLIANCE' },
+  { name: 'Air Conditioner', category: 'APPLIANCE' }
 ];
 
-const componentCatalog = [
-  'Steel rivet — Jindal','Copper busbar','Masala blend hopper','SS304 mixing blade',
-  'Conveyor belt rubber','PLC sensor module','Motor 3PH 2HP','Food-grade seal gasket',
-  'Tempered glass panel','Desiccant sachet','Label roll Hindi/English','Carton 5-ply export',
-  'Tamper-evident cap','pH buffer sachet','RoHS compliant wire'
-];
+/** Category-based components */
+const componentMap = {
+  FURNITURE: [
+    'Wood plank',
+    'Nails',
+    'Screws',
+    'Foam cushion',
+    'Fabric cover',
+    'Metal frame'
+  ],
+  ELECTRONICS: [
+    'Circuit board PCB',
+    'LED display panel',
+    'Copper wiring',
+    'Speaker driver',
+    'Battery',
+    'Power supply'
+  ],
+  APPLIANCE: [
+    'Motor',
+    'Compressor',
+    'Copper tubing',
+    'Control panel',
+    'Drum unit',
+    'Cooling coil'
+  ]
+};
 
 const ecoVerbs = [
-  'Process calibration','Packaging revision','Costing update',
-  'Supplier change','Quality sign-off','Shelf-life review'
+  'Design update',
+  'Component replacement',
+  'Cost optimization',
+  'Supplier change',
+  'Performance improvement',
+  'Quality enhancement'
 ];
 
 function makeSku(name, idx) {
@@ -81,20 +110,18 @@ function makeSku(name, idx) {
 }
 
 function makeProductChange(currentSale, currentCost) {
-  const saleDelta = rand(-3, 8);
-  const costDelta = rand(-2, 5);
   return {
-    salePrice: Math.max(10, currentSale + saleDelta),
-    costPrice: Math.max(5, currentCost + costDelta),
+    salePrice: Math.max(10, currentSale + rand(-3, 8)),
+    costPrice: Math.max(5, currentCost + rand(-2, 5)),
     oldSalePrice: currentSale,
     oldCostPrice: currentCost
   };
 }
 
-function makeBomChange() {
+function makeBomChange(category) {
   return {
     components: Array.from({ length: rand(3, 6) }).map(() => ({
-      componentName: pick(componentCatalog),
+      componentName: pick(componentMap[category]),
       oldQuantity: rand(1, 5),
       quantity: rand(1, 8)
     }))
@@ -102,7 +129,7 @@ function makeBomChange() {
 }
 
 async function main() {
-  console.log('Seeding DB with Indian data + mandatory users...');
+  console.log('Seeding DB with REALISTIC data...');
 
   await prisma.auditLog.deleteMany({});
   await prisma.passwordResetOtp.deleteMany().catch(() => {});
@@ -115,63 +142,43 @@ async function main() {
 
   /** Mandatory users */
   const adminUser = await prisma.user.create({
-    data: {
-      ...ACCOUNTS.admin,
-      password: await bcrypt.hash(ACCOUNTS.admin.password, 10)
-    }
+    data: { ...ACCOUNTS.admin, password: await bcrypt.hash(ACCOUNTS.admin.password, 10) }
   });
 
   const approverUser = await prisma.user.create({
-    data: {
-      ...ACCOUNTS.approver,
-      password: await bcrypt.hash(ACCOUNTS.approver.password, 10)
-    }
+    data: { ...ACCOUNTS.approver, password: await bcrypt.hash(ACCOUNTS.approver.password, 10) }
   });
 
   const engineerUser = await prisma.user.create({
-    data: {
-      ...ACCOUNTS.engineer,
-      password: await bcrypt.hash(ACCOUNTS.engineer.password, 10)
-    }
+    data: { ...ACCOUNTS.engineer, password: await bcrypt.hash(ACCOUNTS.engineer.password, 10) }
   });
 
   /** Random users */
   const extraUsers = [];
-  const extraCount = rand(10, 20);
-
-  for (let i = 0; i < extraCount; i++) {
+  for (let i = 0; i < rand(10, 20); i++) {
     const u = generateIndianUser(i);
-    const created = await prisma.user.create({
-      data: {
-        ...u,
-        password: await bcrypt.hash(u.password, 10)
-      }
+    const user = await prisma.user.create({
+      data: { ...u, password: await bcrypt.hash(u.password, 10) }
     });
-    extraUsers.push(created);
+    extraUsers.push(user);
   }
 
-  /** Role pools */
-  const engineers = [
-    engineerUser,
-    ...extraUsers.filter(u => u.role === 'ENGINEER')
-  ];
+  const engineers = [engineerUser, ...extraUsers.filter(u => u.role === 'ENGINEER')];
+  const approvers = [approverUser, ...extraUsers.filter(u => u.role === 'APPROVER')];
 
-  const approvers = [
-    approverUser,
-    ...extraUsers.filter(u => u.role === 'APPROVER')
-  ];
-
-  /** Products + BOM */
+  /** Products */
   const createdProducts = [];
 
-  for (let i = 0; i < productNames.length; i++) {
-    const baseCost = rand(12, 35);
-    const baseSale = baseCost + rand(8, 20);
+  for (let i = 0; i < products.length; i++) {
+    const { name, category } = products[i];
+
+    const baseCost = rand(1000, 20000);
+    const baseSale = baseCost + rand(500, 5000);
 
     const product = await prisma.product.create({
       data: {
-        sku: makeSku(productNames[i], i),
-        name: productNames[i]
+        sku: makeSku(name, i),
+        name
       }
     });
 
@@ -197,13 +204,13 @@ async function main() {
       await prisma.boMComponent.create({
         data: {
           bomId: bom.id,
-          componentName: pick(componentCatalog),
-          quantity: rand(1, 8)
+          componentName: pick(componentMap[category]),
+          quantity: rand(1, 10)
         }
       });
     }
 
-    createdProducts.push({ ...product, baseCost, baseSale });
+    createdProducts.push({ ...product, baseCost, baseSale, category });
   }
 
   /** ECOs */
@@ -224,7 +231,7 @@ async function main() {
         proposedChanges:
           type === 'PRODUCT'
             ? makeProductChange(product.baseSale, product.baseCost)
-            : makeBomChange()
+            : makeBomChange(product.category)
       }
     });
 
