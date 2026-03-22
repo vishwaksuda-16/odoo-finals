@@ -6,6 +6,7 @@ import KanbanCard from "../components/KanbanCard";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { getMyApproverDutyForEco } from "../utils/approvalRules";
+import { countEcosByPipelineBucket } from "../utils/ecoPipeline";
 
 const listIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
 const kanbanIcon = <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
@@ -61,14 +62,16 @@ export default function Dashboard() {
     .slice(0, 8);
   const maxContributor = contributorRows[0]?.count || 1;
 
+  const pipelineBuckets = countEcosByPipelineBucket(visibleEcos);
   const pieSegments = [
-    { label: "In Progress", value: byStatus.InProgress, color: "#2563eb" },
-    { label: "Approval", value: byStatus.Pending, color: "#f59e0b" },
-    { label: "Approved", value: byStatus.Approved, color: "#059669" },
-    { label: "Draft", value: byStatus.Draft, color: "#64748b" },
-    { label: "Rejected", value: byStatus.Rejected, color: "#dc2626" },
+    { label: "In Progress", value: pipelineBuckets.InProgress, color: "#2563eb" },
+    { label: "Approval", value: pipelineBuckets.Approval, color: "#f59e0b" },
+    { label: "Approved", value: pipelineBuckets.Approved, color: "#059669" },
+    { label: "Draft", value: pipelineBuckets.Draft, color: "#64748b" },
+    { label: "Rejected", value: pipelineBuckets.Rejected, color: "#dc2626" },
   ].filter((s) => s.value > 0);
-  const pieTotal = pieSegments.reduce((sum, s) => sum + s.value, 0) || 1;
+  const pieSum = pieSegments.reduce((sum, s) => sum + s.value, 0);
+  const pieTotal = Math.max(pieSum, 1);
   let accum = 0;
   const pieGradient = pieSegments.map((segment) => {
     const start = (accum / pieTotal) * 100;
@@ -190,7 +193,7 @@ export default function Dashboard() {
                 style={{ background: `conic-gradient(${pieGradient || "#e2e8f0 0% 100%"})` }}
               >
                 <div className="absolute inset-7 rounded-full bg-white border border-surface-100 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-surface-700">{visibleEcos.length}</span>
+                  <span className="text-sm font-semibold text-surface-700 tabular-nums">{pieSum}</span>
                 </div>
               </div>
             </div>

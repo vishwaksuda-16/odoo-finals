@@ -18,6 +18,7 @@ import BOM from "./pages/BOM";
 import BOMCreate from "./pages/BOMCreate";
 import BOMDetail from "./pages/BOMDetail";
 import Reporting from "./pages/Reporting";
+import ApproverWorkspace from "./pages/ApproverWorkspace";
 import Settings from "./pages/Settings";
 import ECOStages from "./pages/ECOStages";
 import Approvals from "./pages/Approvals";
@@ -76,6 +77,7 @@ function AppRoutes() {
 
       {/* Protected Routes */}
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/approver" element={<RoleRoute allow={["ADMIN", "APPROVER"]}><ApproverWorkspace /></RoleRoute>} />
       <Route path="/ecos" element={<ProtectedRoute><ECOList /></ProtectedRoute>} />
       <Route path="/ecos/create" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ECOCreate /></RoleRoute>} />
       <Route path="/ecos/:id/edit" element={<RoleRoute allow={["ADMIN", "ENGINEER"]}><ECOEdit /></RoleRoute>} />

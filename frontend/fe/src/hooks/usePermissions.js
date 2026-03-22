@@ -24,5 +24,6 @@ export function usePermissions() {
     canSeeProducts: !!role,
     canSeeBom: !!role,
     canSeeReporting: canViewAuditLogs,
+    canSeeApproverWorkspace: canApprove,
   };
 }
